@@ -9,7 +9,7 @@ import {
   generateReportCompleto,
   generateCalendarioLezioni 
 } from './excelGenerator';
-import { getAllTemplates, type UserTemplate } from '@/db/templateDb';
+import { getAllTemplates, getSystemTemplate, type UserTemplate } from '@/db/templateDb';
 
 export interface ZipConfig {
   includeExcel: boolean;
@@ -109,13 +109,8 @@ async function generateSingleModuleZip(
     if (fadSessions.length > 0) {
       const fadFolder = zip.folder(config.fadFolderName);
       if (fadFolder) {
-        // Look for FAD template
-        const templates = await getAllTemplates();
-        const fadTemplate = templates.find(t => 
-          t.name.toLowerCase().includes('fad') || 
-          t.name.toLowerCase().includes('modello_a') ||
-          t.name.toLowerCase().includes('modello_b')
-        );
+        // Use system template for FAD (modello_b_fad for per-session)
+        const fadTemplate = await getSystemTemplate('modello_b_fad');
         
         if (fadTemplate) {
           for (let i = 0; i < fadSessions.length; i++) {
@@ -134,6 +129,8 @@ async function generateSingleModuleZip(
               console.error(`Error generating FAD registry for ${session.data_completa}:`, error);
             }
           }
+        } else {
+          console.warn('Template Modello B FAD non configurato nelle impostazioni');
         }
       }
     }
@@ -141,11 +138,8 @@ async function generateSingleModuleZip(
   
   // 4. Generate certificates (one per participant)
   if (config.includeCertificates) {
-    const templates = await getAllTemplates();
-    const certTemplate = templates.find(t => 
-      t.name.toLowerCase().includes('certificat') || 
-      t.name.toLowerCase().includes('attestat')
-    );
+    // Use system template for certificates
+    const certTemplate = await getSystemTemplate('certificato');
     
     if (certTemplate && data.partecipanti.length > 0) {
       const certFolder = zip.folder(config.certificatesFolderName);
@@ -166,6 +160,8 @@ async function generateSingleModuleZip(
           }
         }
       }
+    } else if (!certTemplate) {
+      console.warn('Template Certificato non configurato nelle impostazioni');
     }
   }
   

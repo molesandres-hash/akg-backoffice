@@ -73,13 +73,6 @@ export function UserSettingsForm() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-display font-semibold">Impostazioni</h1>
-        <p className="text-muted-foreground mt-1">
-          Configura i valori predefiniti per la generazione documenti
-        </p>
-      </div>
-
       {/* Entity Settings */}
       <Card className="glass-card">
         <CardHeader>
