@@ -9,13 +9,15 @@ import type {
   Ente,
   Sede,
   Persona,
+  Responsabile,
   FadSettings,
   ExtractionResult
 } from '@/types/extraction';
 import { 
   createEmptyCourseData, 
   createEmptyModulo, 
-  createEmptySessione 
+  createEmptySessione,
+  createEmptyResponsabile 
 } from '@/types/extraction';
 
 interface WizardState {
@@ -55,7 +57,10 @@ interface WizardState {
   updateTrainer: (trainer: Partial<Persona>) => void;
   updateTutor: (tutor: Partial<Persona>) => void;
   updateDirettore: (direttore: Partial<{ nome_completo: string; qualifica: string }>) => void;
+  updateSupervisore: (supervisore: Partial<Responsabile>) => void;
+  updateResponsabileCertificazione: (responsabile: Partial<Responsabile>) => void;
   updateFadSettings: (settings: Partial<FadSettings>) => void;
+  setNote: (note: string) => void;
   
   // Modulo actions
   addModulo: (modulo?: Modulo) => void;
@@ -186,10 +191,31 @@ export const useWizardStore = create<WizardState>()(
         }
       })),
       
+      updateSupervisore: (supervisore) => set((state) => ({
+        courseData: {
+          ...state.courseData,
+          supervisore: { ...state.courseData.supervisore, ...supervisore }
+        }
+      })),
+      
+      updateResponsabileCertificazione: (responsabile) => set((state) => ({
+        courseData: {
+          ...state.courseData,
+          responsabile_certificazione: { ...state.courseData.responsabile_certificazione, ...responsabile }
+        }
+      })),
+      
       updateFadSettings: (settings) => set((state) => ({
         courseData: {
           ...state.courseData,
           fad_settings: { ...state.courseData.fad_settings, ...settings }
+        }
+      })),
+      
+      setNote: (note) => set((state) => ({
+        courseData: {
+          ...state.courseData,
+          note
         }
       })),
       
@@ -376,10 +402,13 @@ function mapExtractionToCourseData(result: ExtractionResult): CourseData {
       ...base.direttore,
       ...result.direttore,
     },
+    supervisore: createEmptyResponsabile(),
+    responsabile_certificazione: createEmptyResponsabile(),
     partecipanti: result.partecipanti || [],
     fad_settings: {
       ...base.fad_settings,
       ...result.fad_settings,
     } as FadSettings,
+    note: '',
   };
 }
