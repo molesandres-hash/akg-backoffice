@@ -21,6 +21,7 @@ export interface Ente {
   nome: string;
   id: string;
   indirizzo: string;
+  logo?: string;
   accreditato: EnteAccreditato;
 }
 
@@ -66,6 +67,13 @@ export interface Partecipante {
   codiceFiscale: string;
   email?: string;
   telefono?: string;
+  ore_presenza?: number;
+}
+
+// Responsabile (Supervisore, Resp. Certificazione)
+export interface Responsabile {
+  nome_completo: string;
+  qualifica: string;
 }
 
 // Sessione (Session) - Detailed
@@ -133,8 +141,11 @@ export interface CourseData {
   trainer: Persona;
   tutor: Persona;
   direttore: Direttore;
+  supervisore: Responsabile;
+  responsabile_certificazione: Responsabile;
   partecipanti: Partecipante[];
   fad_settings: FadSettings;
+  note?: string;
 }
 
 // Legacy extraction result (for AI extraction service compatibility)
@@ -199,6 +210,10 @@ export interface PlaceholderMap {
   DIRETTORE_CORSO: string;
   DIRETTORE_NOME_COMPLETO: string;
   DIRETTORE_QUALIFICA: string;
+  SUPERVISORE_NOME_COMPLETO: string;
+  SUPERVISORE_QUALIFICA: string;
+  RESP_CERT_NOME_COMPLETO: string;
+  RESP_CERT_QUALIFICA: string;
   
   // FAD Settings
   PIATTAFORMA: string;
@@ -212,6 +227,8 @@ export interface PlaceholderMap {
   PASSCODE: string;
   ORE_FAD: string;
   ORE_TOTALE_FAD: string;
+  NUMERO_PAGINE: string;
+  DATA_VIDIMAZIONE: string;
   
   // Modulo corrente (per documenti per-modulo)
   MODULO_TITOLO: string;
@@ -426,6 +443,13 @@ export function createEmptyFadSettings(): FadSettings {
   };
 }
 
+export function createEmptyResponsabile(): Responsabile {
+  return {
+    nome_completo: '',
+    qualifica: '',
+  };
+}
+
 export function createEmptyCourseData(): CourseData {
   return {
     corso: createEmptyCorso(),
@@ -435,7 +459,10 @@ export function createEmptyCourseData(): CourseData {
     trainer: createEmptyPersona(),
     tutor: createEmptyPersona(),
     direttore: { nome_completo: '', qualifica: '' },
+    supervisore: createEmptyResponsabile(),
+    responsabile_certificazione: createEmptyResponsabile(),
     partecipanti: [],
     fad_settings: createEmptyFadSettings(),
+    note: '',
   };
 }

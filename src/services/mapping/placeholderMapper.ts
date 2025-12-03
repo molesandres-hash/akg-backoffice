@@ -9,6 +9,10 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
   const totalFadHours = fadSessions.reduce((acc, s) => acc + calculateDuration(s.ora_inizio, s.ora_fine), 0);
   const sedeAccreditataCompleta = [data.ente.accreditato.nome, [data.ente.accreditato.via, data.ente.accreditato.numero_civico].filter(Boolean).join(' '), data.ente.accreditato.comune].filter(Boolean).join(' - ');
   const verbaleLuogo = data.ente.accreditato.comune || data.sede.nome?.split(' ')[0] || '';
+  
+  // Calculated fields
+  const numeroPagine = presenzaSessions.length;
+  const dataVidimazione = presenzaSessions.length > 0 ? presenzaSessions[presenzaSessions.length - 1].data_completa : '';
 
   return {
     NOME_CORSO: data.corso.titolo || '', CORSO_TITOLO: data.corso.titolo || '', ID_CORSO: currentModule?.id_corso || data.corso.id || '', ID_SEZIONE: currentModule?.id_sezione || '',
@@ -21,10 +25,14 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     DOCENTE_COMPLETO: data.trainer.nome_completo || [data.trainer.nome, data.trainer.cognome].filter(Boolean).join(' '), CODICE_FISCALE_DOCENTE: data.trainer.codice_fiscale || '', EMAIL_DOCENTE: data.trainer.email || '', TELEFONO_DOCENTE: data.trainer.telefono || '',
     TUTOR_NOME: data.tutor.nome || '', TUTOR_COGNOME: data.tutor.cognome || '', TUTOR_COMPLETO: data.tutor.nome_completo || [data.tutor.nome, data.tutor.cognome].filter(Boolean).join(' '), TUTOR_CORSO: data.tutor.nome_completo || '',
     DIRETTORE_CORSO: data.direttore.nome_completo || '', DIRETTORE_NOME_COMPLETO: data.direttore.nome_completo || '', DIRETTORE_QUALIFICA: data.direttore.qualifica || '',
+    SUPERVISORE_NOME_COMPLETO: data.supervisore?.nome_completo || '', SUPERVISORE_QUALIFICA: data.supervisore?.qualifica || '',
+    RESP_CERT_NOME_COMPLETO: data.responsabile_certificazione?.nome_completo || '', RESP_CERT_QUALIFICA: data.responsabile_certificazione?.qualifica || '',
     PIATTAFORMA: data.fad_settings.piattaforma || '', MODALITA_GESTIONE: data.fad_settings.modalita_gestione || '', MODALITA_VALUTAZIONE: data.fad_settings.modalita_valutazione || '',
     OBIETTIVI_DIDATTICI: data.fad_settings.obiettivi_didattici || '', ZOOM_MEETING_ID: data.fad_settings.zoom_meeting_id || '', ZOOM_PASSCODE: data.fad_settings.zoom_passcode || '',
-    ZOOM_LINK: data.fad_settings.zoom_link || '', ID_RIUNIONE: data.fad_settings.zoom_meeting_id || '', PASSCODE: data.fad_settings.zoom_passcode || '', ORE_FAD: totalFadHours.toString(), ORE_TOTALE_FAD: totalFadHours.toString(),
-    MODULO_TITOLO: currentModule?.titolo || '', MODULO_ID: currentModule?.id || '', MODULO_ID_SEZIONE: currentModule?.id_sezione || '', MODULO_NUMERO: moduleIndex + 1,
+    ZOOM_LINK: data.fad_settings.zoom_link || '', ID_RIUNIONE: data.fad_settings.zoom_meeting_id || '', PASSCODE: data.fad_settings.zoom_passcode || '', 
+    ORE_FAD: totalFadHours.toString(), ORE_TOTALE_FAD: totalFadHours.toString(),
+    NUMERO_PAGINE: numeroPagine.toString(), DATA_VIDIMAZIONE: dataVidimazione,
+    MODULO_TITOLO: currentModule?.titolo || data.corso.titolo || '', MODULO_ID: currentModule?.id || '', MODULO_ID_SEZIONE: currentModule?.id_sezione || '', MODULO_NUMERO: moduleIndex + 1,
     MODULO_DATA_INIZIO: currentModule?.data_inizio || '', MODULO_DATA_FINE: currentModule?.data_fine || '', MODULO_ORE: currentModule?.ore_totali || '', MODULO_TIPO_SEDE: currentModule?.tipo_sede || '',
     DATA_OGGI: formatItalianDate(today), GIORNO: today.getDate().toString().padStart(2, '0'), MESE: getItalianMonth(today.getMonth()), ANNO: today.getFullYear().toString(),
     STUDENTI: data.partecipanti.map((p, i) => ({ INDEX: i + 1, NUMERO: i + 1, NOME: p.nome || '', COGNOME: p.cognome || '', NOME_COMPLETO: [p.nome, p.cognome].filter(Boolean).join(' '), CF: p.codiceFiscale || '', CODICE_FISCALE: p.codiceFiscale || '', EMAIL: p.email || '', TELEFONO: p.telefono || '' })),
