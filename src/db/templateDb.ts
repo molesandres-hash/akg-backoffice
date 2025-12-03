@@ -1,5 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 
+// System Template Types - dedicated slots for specific document types
+export type SystemTemplateType = 
+  | 'modello_a_fad'           // Registro Generale FAD
+  | 'modello_b_fad'           // Registro Giornaliero FAD (per sessione)
+  | 'certificato'             // Attestato/Certificato per partecipante
+  | 'calendario_condizionalita' // Modulo 5 - GOL/PNRR
+  | 'verbale_ammissione'      // Verbale ammissione esame
+  | 'registro_presenza'       // Registro presenze cartaceo
+  | 'verbale_finale';         // Verbale finale/scrutinio
+
 // Interfaces
 export interface UserTemplate {
   id?: number;
@@ -8,6 +18,14 @@ export interface UserTemplate {
   fileBlob: Blob;
   uploadDate: Date;
   isDefault: boolean;
+}
+
+export interface SystemTemplate {
+  id?: number;
+  type: SystemTemplateType;
+  name: string;
+  fileBlob: Blob;
+  uploadDate: Date;
 }
 
 export interface UserSettings {
@@ -25,13 +43,15 @@ export interface UserSettings {
 class TemplateDatabase extends Dexie {
   templates!: Table<UserTemplate, number>;
   settings!: Table<UserSettings, number>;
+  systemTemplates!: Table<SystemTemplate, number>;
 
   constructor() {
     super('MagicFormDB');
     
-    this.version(1).stores({
+    this.version(2).stores({
       templates: '++id, name, category, uploadDate, isDefault',
-      settings: '++id'
+      settings: '++id',
+      systemTemplates: '++id, &type, uploadDate'
     });
   }
 }
@@ -82,4 +102,40 @@ export async function hasTemplates(): Promise<boolean> {
 // Clear all templates (for reset functionality)
 export async function clearAllTemplates(): Promise<void> {
   await db.templates.clear();
+}
+
+// System Template functions
+export async function getSystemTemplate(type: SystemTemplateType): Promise<SystemTemplate | undefined> {
+  return db.systemTemplates.where('type').equals(type).first();
+}
+
+export async function getAllSystemTemplates(): Promise<SystemTemplate[]> {
+  return db.systemTemplates.toArray();
+}
+
+export async function setSystemTemplate(type: SystemTemplateType, file: File | Blob, name: string): Promise<void> {
+  const existing = await getSystemTemplate(type);
+  const fileBlob = file instanceof File ? file : file;
+  
+  if (existing?.id) {
+    await db.systemTemplates.update(existing.id, {
+      name,
+      fileBlob,
+      uploadDate: new Date()
+    });
+  } else {
+    await db.systemTemplates.add({
+      type,
+      name,
+      fileBlob,
+      uploadDate: new Date()
+    });
+  }
+}
+
+export async function deleteSystemTemplate(type: SystemTemplateType): Promise<void> {
+  const template = await getSystemTemplate(type);
+  if (template?.id) {
+    await db.systemTemplates.delete(template.id);
+  }
 }
