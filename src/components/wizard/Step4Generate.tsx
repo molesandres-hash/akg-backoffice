@@ -11,7 +11,9 @@ import {
   AlertTriangle,
   ChevronDown,
   FileJson,
-  FileText
+  FileText,
+  Users,
+  Calendar
 } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
 import { mapCourseDataToPlaceholders, validatePlaceholders } from '@/services/mapping/placeholderMapper';
@@ -33,6 +35,9 @@ export function Step4Generate() {
 
   const placeholders = mapCourseDataToPlaceholders(courseData);
   const warnings = validatePlaceholders(placeholders);
+  
+  // Calculate total sessions across all modules
+  const totalSessions = courseData.moduli.reduce((acc, m) => acc + m.sessioni.length, 0);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -84,7 +89,7 @@ export function Step4Generate() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <span className="text-accent font-bold">{courseData.partecipanti.length}</span>
+                <Users className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{courseData.partecipanti.length}</p>
@@ -98,11 +103,11 @@ export function Step4Generate() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <span className="text-success font-bold">{courseData.sessioni.length}</span>
+                <Calendar className="w-5 h-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{courseData.sessioni.length}</p>
-                <p className="text-xs text-muted-foreground">Lezioni</p>
+                <p className="text-2xl font-bold">{totalSessions}</p>
+                <p className="text-xs text-muted-foreground">Sessioni</p>
               </div>
             </div>
           </CardContent>
@@ -133,30 +138,32 @@ export function Step4Generate() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Titolo</p>
-              <p className="font-medium">{courseData.titoloCorso || '-'}</p>
+              <p className="font-medium">{courseData.corso.titolo || '-'}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Ente</p>
-              <p className="font-medium">{courseData.ente || '-'}</p>
+              <p className="font-medium">{courseData.ente.nome || '-'}</p>
             </div>
             <div>
               <p className="text-muted-foreground">ID Corso</p>
-              <p className="font-medium">{courseData.idCorso || '-'}</p>
+              <p className="font-medium">{courseData.corso.id || '-'}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Ore Totali</p>
-              <p className="font-medium">{courseData.oreTotali || '-'}</p>
+              <p className="font-medium">{courseData.corso.ore_totali || '-'}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Docente</p>
               <p className="font-medium">
-                {[courseData.docenteNome, courseData.docenteCognome].filter(Boolean).join(' ') || '-'}
+                {courseData.trainer.nome_completo || 
+                 [courseData.trainer.nome, courseData.trainer.cognome].filter(Boolean).join(' ') || '-'}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Tutor</p>
               <p className="font-medium">
-                {[courseData.tutorNome, courseData.tutorCognome].filter(Boolean).join(' ') || '-'}
+                {courseData.tutor.nome_completo ||
+                 [courseData.tutor.nome, courseData.tutor.cognome].filter(Boolean).join(' ') || '-'}
               </p>
             </div>
           </div>

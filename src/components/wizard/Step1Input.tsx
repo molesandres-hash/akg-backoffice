@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Sparkles, Loader2, FileText, AlertCircle } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
 import { toast } from 'sonner';
+import type { ExtractionResult } from '@/types/extraction';
 
 export function Step1Input() {
   const { 
@@ -30,48 +30,111 @@ export function Step1Input() {
 
     try {
       // Simulate AI extraction for now
-      // In production, this would call the Gemini API
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mock extraction result
-      const mockResult = {
-        titoloCorso: 'Corso di Formazione sulla Sicurezza sul Lavoro',
-        oreTotali: 16,
-        idCorso: 'CRS-2024-001',
-        idSezione: 'SEZ-A',
-        ente: 'Ente Formativo Esempio',
-        sede: 'Via Roma 123, Milano',
-        docente: { nome: 'Mario', cognome: 'Rossi' },
-        tutor: { nome: 'Laura', cognome: 'Bianchi' },
+      // Mock extraction result with new structure
+      const mockResult: ExtractionResult = {
+        corso: {
+          titolo: 'AI: Intelligenza Artificiale 100% FAD - Modulo 1',
+          id: '144176',
+          tipo: 'FAD',
+          data_inizio: '22/09/2025',
+          data_fine: '26/09/2025',
+          durata_totale: '20 hours',
+          ore_totali: '20',
+          ore_rendicontabili: '20',
+          capienza: '4/5',
+          capienza_numero: 4,
+          capienza_totale: 5,
+          stato: 'Aperto',
+          anno: '2025',
+          programma: '',
+          offerta_formativa: {
+            codice: '1540',
+            nome: 'GOL - FAD 100% - Offerta per Formazione mirata all\'inserimento lavorativo'
+          }
+        },
         moduli: [
           {
-            titolo: 'Modulo 1 - Sicurezza Base',
-            dataInizio: '15/01/2024',
-            dataFine: '15/01/2024',
-            oreTotali: 8,
-            tipoSede: 'presenza' as const,
-            sessioni: [
-              { data: '15/01/2024', oraInizio: '09:00', oraFine: '13:00', argomento: 'Sicurezza sul lavoro' },
-              { data: '15/01/2024', oraInizio: '14:00', oraFine: '18:00', argomento: 'Utilizzo DPI' },
+            titolo: 'AI: Intelligenza Artificiale 100% FAD - Modulo 1',
+            id: 'AI: Intelligenza Artificiale 100% FAD - Modulo 1',
+            id_corso: '50039',
+            id_sezione: '144176',
+            argomenti: [
+              'Introduzione all\'Intelligenza Artificiale',
+              'Fondamenti di Machine Learning',
+              'Algoritmi di Apprendimento Supervisionato',
+              'Reti Neurali e Deep Learning',
+              'Elaborazione del Linguaggio Naturale (NLP)'
             ],
-          },
-          {
-            titolo: 'Modulo 2 - Primo Soccorso',
-            dataInizio: '16/01/2024',
-            dataFine: '16/01/2024',
-            oreTotali: 8,
-            tipoSede: 'presenza' as const,
+            data_inizio: '22/09/2025',
+            data_fine: '26/09/2025',
+            ore_totali: '20',
+            ore_rendicontabili: '20',
+            tipo_sede: 'Online',
+            provider: '',
+            capienza: '4/5',
+            stato: 'Aperto',
             sessioni: [
-              { data: '16/01/2024', oraInizio: '09:00', oraFine: '13:00', argomento: 'Primo soccorso' },
-              { data: '16/01/2024', oraInizio: '14:00', oraFine: '18:00', argomento: 'Rischio incendio' },
+              { numero: 1, data_completa: '22/09/2025', giorno: '22', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Lunedì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
+              { numero: 2, data_completa: '23/09/2025', giorno: '23', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Martedì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
+              { numero: 3, data_completa: '24/09/2025', giorno: '24', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Mercoledì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
+              { numero: 4, data_completa: '25/09/2025', giorno: '25', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Giovedì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
+              { numero: 5, data_completa: '26/09/2025', giorno: '26', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Venerdì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
             ],
-          },
+            sessioni_presenza: []
+          }
         ],
+        sede: {
+          tipo: '',
+          nome: 'Milano Porta Romana',
+          modalita: '',
+          indirizzo: 'Corso di Porta Romana 122'
+        },
+        ente: {
+          nome: 'AK Group S.r.l',
+          id: 'ent_1_sede_ak_3',
+          indirizzo: 'Via Recanate 2 Milano MI',
+          accreditato: {
+            nome: 'AK Group S.r.l',
+            via: 'Via Recanate 2',
+            numero_civico: '',
+            comune: 'Milano',
+            cap: '20124',
+            provincia: 'MI'
+          }
+        },
+        trainer: {
+          nome: 'Andres',
+          cognome: 'Moles',
+          nome_completo: 'Andres Moles',
+          codice_fiscale: 'MLSNRS97S25F205C'
+        },
+        tutor: {
+          nome: '',
+          cognome: '',
+          nome_completo: '',
+          codice_fiscale: ''
+        },
+        direttore: {
+          nome_completo: 'Hubbard Andrea',
+          qualifica: 'Supervisore'
+        },
         partecipanti: [
-          { nome: 'Giuseppe', cognome: 'Verdi', codiceFiscale: 'VRDGPP80A01H501X', email: 'g.verdi@email.it' },
-          { nome: 'Anna', cognome: 'Neri', codiceFiscale: 'NRENNA85B02F205Y', email: 'a.neri@email.it' },
-          { nome: 'Marco', cognome: 'Gialli', codiceFiscale: 'GLLMRC90C03L219Z', email: 'm.gialli@email.it' },
+          { nome: 'FABRIZIO', cognome: 'VILCA CAMPOS', codiceFiscale: 'VLCFRZ01L30Z611L', email: '', telefono: '' },
+          { nome: 'PAOLO', cognome: 'PERRONE', codiceFiscale: 'PRRPLA78C09F205R', email: '', telefono: '' },
+          { nome: 'CLAUDIA', cognome: 'CANI', codiceFiscale: 'CNACLD79L52F205N', email: '', telefono: '' },
+          { nome: 'Cristian', cognome: 'Agnelli', codiceFiscale: 'GNLCST90A01F205X', email: '', telefono: '' },
         ],
+        fad_settings: {
+          piattaforma: 'Microsoft Teams',
+          modalita_gestione: 'Sincrona',
+          modalita_valutazione: 'Test Scritto',
+          obiettivi_didattici: '',
+          zoom_meeting_id: '123213',
+          zoom_passcode: '12323321312',
+          zoom_link: 'https://teams.microsoft.com/meeting'
+        }
       };
 
       setExtractionResult(mockResult);
