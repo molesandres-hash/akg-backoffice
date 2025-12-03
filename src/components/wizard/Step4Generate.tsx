@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, 
   Download, 
@@ -13,11 +15,15 @@ import {
   FileJson,
   FileText,
   Users,
-  Calendar
+  Calendar,
+  FileArchive,
+  FileSpreadsheet,
+  Layers
 } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
 import { mapCourseDataToPlaceholders, validatePlaceholders } from '@/services/mapping/placeholderMapper';
 import { generateMultipleDocuments } from '@/services/generation/docxGenerator';
+import { generateCourseZip, generateExcelOnlyZip, type ZipConfig } from '@/services/generation/zipPackager';
 import { toast } from 'sonner';
 
 export function Step4Generate() {
@@ -32,18 +38,37 @@ export function Step4Generate() {
   
   const [showPreview, setShowPreview] = useState(false);
   const [generationComplete, setGenerationComplete] = useState(false);
+  const [exportMode, setExportMode] = useState<'docs' | 'zip' | 'excel'>('zip');
+  
+  // ZIP options
+  const [includeExcel, setIncludeExcel] = useState(true);
+  const [includeFadRegistries, setIncludeFadRegistries] = useState(true);
+  const [includeCertificates, setIncludeCertificates] = useState(false);
 
   const placeholders = mapCourseDataToPlaceholders(courseData);
   const warnings = validatePlaceholders(placeholders);
   
-  // Calculate total sessions across all modules
   const totalSessions = courseData.moduli.reduce((acc, m) => acc + m.sessioni.length, 0);
+  const fadSessions = courseData.moduli.flatMap(m => m.sessioni.filter(s => s.is_fad));
+  const isMultiModule = courseData.moduli.length > 1;
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     
     try {
-      await generateMultipleDocuments(selectedTemplateIds, placeholders);
+      if (exportMode === 'docs') {
+        await generateMultipleDocuments(selectedTemplateIds, placeholders);
+      } else if (exportMode === 'excel') {
+        await generateExcelOnlyZip(courseData);
+      } else {
+        const config: Partial<ZipConfig> = {
+          includeExcel,
+          includeFadRegistries: includeFadRegistries && fadSessions.length > 0,
+          includeCertificates
+        };
+        await generateCourseZip(courseData, selectedTemplateIds, config);
+      }
+      
       setGenerationComplete(true);
       toast.success('Documenti generati con successo!');
     } catch (error) {
@@ -70,7 +95,7 @@ export function Step4Generate() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-secondary/30">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
@@ -79,7 +104,7 @@ export function Step4Generate() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{selectedTemplateIds.length}</p>
-                <p className="text-xs text-muted-foreground">Template selezionati</p>
+                <p className="text-xs text-muted-foreground">Template</p>
               </div>
             </div>
           </CardContent>
@@ -112,7 +137,33 @@ export function Step4Generate() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-secondary/30">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{courseData.moduli.length}</p>
+                <p className="text-xs text-muted-foreground">
+                  {isMultiModule ? 'Moduli' : 'Modulo'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Multi-module notice */}
+      {isMultiModule && (
+        <Alert className="bg-info/10 border-info">
+          <Layers className="h-4 w-4" />
+          <AlertDescription>
+            Corso multi-modulo: verranno generati documenti separati per ogni modulo in sottocartelle.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Warnings */}
       {warnings.length > 0 && (
@@ -128,6 +179,98 @@ export function Step4Generate() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Export Mode Selection */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-lg">Modalità Export</CardTitle>
+          <CardDescription>Scegli come esportare i documenti</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button
+              onClick={() => setExportMode('zip')}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                exportMode === 'zip' 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              <FileArchive className="w-6 h-6 mb-2" />
+              <p className="font-medium">ZIP Completo</p>
+              <p className="text-xs text-muted-foreground">Word + Excel in archivio</p>
+            </button>
+
+            <button
+              onClick={() => setExportMode('docs')}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                exportMode === 'docs' 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              <FileText className="w-6 h-6 mb-2" />
+              <p className="font-medium">Solo Word</p>
+              <p className="text-xs text-muted-foreground">Download singoli documenti</p>
+            </button>
+
+            <button
+              onClick={() => setExportMode('excel')}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                exportMode === 'excel' 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              <FileSpreadsheet className="w-6 h-6 mb-2" />
+              <p className="font-medium">Solo Excel</p>
+              <p className="text-xs text-muted-foreground">Registri e report</p>
+            </button>
+          </div>
+
+          {/* ZIP Options */}
+          {exportMode === 'zip' && (
+            <div className="pt-4 border-t space-y-3">
+              <p className="text-sm font-medium">Opzioni ZIP</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeExcel" 
+                    checked={includeExcel} 
+                    onCheckedChange={(c) => setIncludeExcel(c === true)}
+                  />
+                  <Label htmlFor="includeExcel" className="text-sm">
+                    Includi file Excel
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeFad" 
+                    checked={includeFadRegistries}
+                    disabled={fadSessions.length === 0}
+                    onCheckedChange={(c) => setIncludeFadRegistries(c === true)}
+                  />
+                  <Label htmlFor="includeFad" className="text-sm">
+                    Registri FAD ({fadSessions.length})
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeCerts" 
+                    checked={includeCertificates}
+                    onCheckedChange={(c) => setIncludeCertificates(c === true)}
+                  />
+                  <Label htmlFor="includeCerts" className="text-sm">
+                    Certificati individuali
+                  </Label>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Course Summary */}
       <Card className="glass-card">
@@ -217,7 +360,7 @@ export function Step4Generate() {
           )}
           <Button 
             onClick={handleGenerate} 
-            disabled={isGenerating || selectedTemplateIds.length === 0}
+            disabled={isGenerating || (exportMode !== 'excel' && selectedTemplateIds.length === 0)}
             size="lg"
             className="gap-2"
           >
@@ -229,7 +372,9 @@ export function Step4Generate() {
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                Genera {selectedTemplateIds.length > 1 ? 'Documenti' : 'Documento'}
+                {exportMode === 'zip' ? 'Genera ZIP' : 
+                 exportMode === 'excel' ? 'Genera Excel' : 
+                 `Genera ${selectedTemplateIds.length > 1 ? 'Documenti' : 'Documento'}`}
               </>
             )}
           </Button>
