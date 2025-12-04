@@ -1,8 +1,76 @@
 import * as XLSX from 'xlsx';
-import type { CourseData, Sessione, Partecipante } from '@/types/extraction';
+import type { CourseData, Sessione } from '@/types/extraction';
 
 /**
- * Generates Registro Presenze Excel with formulas
+ * Interface for hourly blocks used in Calendario Lezioni
+ */
+interface HourlyBlock {
+  data: string;
+  ora_inizio: string;
+  ora_fine: string;
+  is_fad: boolean;
+  id_sezione: string;
+}
+
+/**
+ * Splits a session into 1-hour blocks, skipping lunch break (13:00-14:00)
+ */
+function splitIntoHourlyBlocks(sessione: Sessione, id_sezione: string): HourlyBlock[] {
+  const blocks: HourlyBlock[] = [];
+  
+  const [startH, startM] = sessione.ora_inizio.split(':').map(Number);
+  const [endH, endM] = sessione.ora_fine.split(':').map(Number);
+  
+  // Convert to minutes for easier calculation
+  let currentMinutes = startH * 60 + (startM || 0);
+  const endMinutes = endH * 60 + (endM || 0);
+  
+  while (currentMinutes < endMinutes) {
+    const currentHour = Math.floor(currentMinutes / 60);
+    
+    // Skip lunch break 13:00-14:00
+    if (currentHour === 13) {
+      currentMinutes = 14 * 60; // Jump to 14:00
+      continue;
+    }
+    
+    // Calculate block end (next hour or session end, whichever is first)
+    let blockEndMinutes = (currentHour + 1) * 60;
+    
+    // If we're at 12:xx and would go to 13:xx, stop at 13:00
+    if (currentHour === 12 && blockEndMinutes > 13 * 60) {
+      blockEndMinutes = 13 * 60;
+    }
+    
+    // Don't exceed session end
+    if (blockEndMinutes > endMinutes) {
+      blockEndMinutes = endMinutes;
+    }
+    
+    // Only add if we have a full hour or significant portion
+    const blockDuration = blockEndMinutes - currentMinutes;
+    if (blockDuration >= 30) { // At least 30 minutes
+      const startHour = Math.floor(currentMinutes / 60);
+      const endHour = Math.floor(blockEndMinutes / 60);
+      const endMin = blockEndMinutes % 60;
+      
+      blocks.push({
+        data: sessione.data_completa,
+        ora_inizio: `${startHour.toString().padStart(2, '0')}:${(currentMinutes % 60).toString().padStart(2, '0')}`,
+        ora_fine: `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`,
+        is_fad: sessione.is_fad,
+        id_sezione: id_sezione,
+      });
+    }
+    
+    currentMinutes = blockEndMinutes;
+  }
+  
+  return blocks;
+}
+
+/**
+ * Generates Registro Presenze Excel with formulas including cumulative hours row
  */
 export function generateRegistroPresenze(data: CourseData, moduleIndex: number = 0): Blob {
   const currentModule = data.moduli[moduleIndex] || data.moduli[0];
@@ -14,7 +82,7 @@ export function generateRegistroPresenze(data: CourseData, moduleIndex: number =
   
   const wb = XLSX.utils.book_new();
   
-  // Header row: Nome Corsista, Date columns, Totale Ore
+  // Header row: N., Cognome, Nome, CF, Date columns, Totale Ore
   const headers = ['N.', 'Cognome', 'Nome', 'Codice Fiscale'];
   sortedSessions.forEach(s => headers.push(s.data_completa));
   headers.push('Totale Ore');
@@ -42,7 +110,8 @@ export function generateRegistroPresenze(data: CourseData, moduleIndex: number =
     wsData.push(row);
   });
   
-  // Totals row
+  // Totals row (Totale Giorno)
+  const totalsRowNum = data.partecipanti.length + 2;
   const totalsRow: (string | number | { f: string })[] = ['', '', '', 'TOTALE'];
   sortedSessions.forEach((_, colIdx) => {
     const col = XLSX.utils.encode_col(4 + colIdx);
@@ -52,6 +121,25 @@ export function generateRegistroPresenze(data: CourseData, moduleIndex: number =
   const lastDataCol = XLSX.utils.encode_col(4 + sortedSessions.length);
   totalsRow.push({ f: `SUM(${lastDataCol}2:${lastDataCol}${data.partecipanti.length + 1})` });
   wsData.push(totalsRow);
+  
+  // Cumulative hours row (Ore Cumulative)
+  const cumulativeRowNum = totalsRowNum + 1;
+  const cumulativeRow: (string | number | { f: string })[] = ['', '', '', 'ORE CUMULATIVE'];
+  sortedSessions.forEach((_, colIdx) => {
+    const col = XLSX.utils.encode_col(4 + colIdx);
+    if (colIdx === 0) {
+      // First column: same as daily total
+      cumulativeRow.push({ f: `${col}${totalsRowNum}` });
+    } else {
+      // Subsequent columns: previous cumulative + current daily total
+      const prevCol = XLSX.utils.encode_col(4 + colIdx - 1);
+      cumulativeRow.push({ f: `${prevCol}${cumulativeRowNum}+${col}${totalsRowNum}` });
+    }
+  });
+  // Final cumulative total (last column in cumulative row)
+  const lastCumulativeCol = XLSX.utils.encode_col(4 + sortedSessions.length - 1);
+  cumulativeRow.push({ f: `${lastCumulativeCol}${cumulativeRowNum}` });
+  wsData.push(cumulativeRow);
   
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   
@@ -196,51 +284,64 @@ export function generateReportCompleto(data: CourseData, moduleIndex: number = 0
 }
 
 /**
- * Generates Calendario Lezioni Excel
+ * Generates Calendario Lezioni Excel with hourly blocks (Clean Excel format)
+ * Each session is split into 1-hour blocks, skipping lunch break 13:00-14:00
  */
 export function generateCalendarioLezioni(data: CourseData, moduleIndex: number = 0): Blob {
   const currentModule = data.moduli[moduleIndex] || data.moduli[0];
   const sessions = currentModule?.sessioni || [];
+  
+  // Sort sessions chronologically
   const sortedSessions = [...sessions].sort((a, b) => 
     new Date(a.data_completa.split('/').reverse().join('-')).getTime() - 
     new Date(b.data_completa.split('/').reverse().join('-')).getTime()
   );
   
-  const wb = XLSX.utils.book_new();
-  
-  const headers = ['N.', 'Data', 'Giorno', 'Ora Inizio', 'Ora Fine', 'Durata (h)', 'Modalità', 'Argomento'];
-  const wsData: (string | number)[][] = [headers];
-  
-  sortedSessions.forEach((s, i) => {
-    wsData.push([
-      i + 1,
-      s.data_completa || '',
-      s.giorno_settimana || '',
-      s.ora_inizio || '',
-      s.ora_fine || '',
-      s.durata || calculateDuration(s.ora_inizio, s.ora_fine),
-      s.is_fad ? 'FAD/Online' : 'Presenza',
-      s.argomento || ''
-    ]);
-  });
-  
-  // Totale ore
-  wsData.push(['', '', '', '', 'TOTALE', { toString: () => `=SUM(F2:F${sortedSessions.length + 1})` } as any, '', '']);
-  
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [
-    { wch: 4 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, 
-    { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 40 }
+  // Headers as per specification
+  const headers = [
+    'ID_SEZIONE',
+    'DATA LEZIONE',
+    'TOTALE_ORE',
+    'ORA_INIZIO',
+    'ORA_FINE',
+    'TIPOLOGIA',
+    'CODICE FISCALE DOCENTE',
+    'MATERIA',
+    'CONTENUTI MATERIA',
+    'SEDE SVOLGIMENTO'
   ];
   
-  XLSX.utils.book_append_sheet(wb, ws, 'Calendario');
+  const rows: string[][] = [];
+  const idSezione = currentModule?.id_sezione || '';
+  const cfDocente = data.trainer?.codice_fiscale || '';
+  const materia = currentModule?.titolo || data.corso.titolo || '';
   
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  // For each session, split into hourly blocks
+  sortedSessions.forEach(sessione => {
+    const blocks = splitIntoHourlyBlocks(sessione, idSezione);
+    
+    blocks.forEach(block => {
+      rows.push([
+        block.id_sezione,                    // ID_SEZIONE
+        block.data,                          // DATA LEZIONE
+        '1',                                 // TOTALE_ORE (always 1 per block)
+        block.ora_inizio,                    // ORA_INIZIO
+        block.ora_fine,                      // ORA_FINE
+        block.is_fad ? '4' : '1',            // TIPOLOGIA (1=presenza, 4=FAD)
+        cfDocente,                           // CODICE FISCALE DOCENTE
+        materia,                             // MATERIA
+        materia,                             // CONTENUTI MATERIA
+        block.is_fad ? '' : '1'              // SEDE SVOLGIMENTO (1=presenza, ""=FAD)
+      ]);
+    });
+  });
+  
+  // Use generateCleanExcel for clean format with all cells as text
+  return generateCleanExcel(headers, rows, 'Calendario');
 }
 
 /**
- * Clean Excel mode - forces all cells as text
+ * Clean Excel mode - forces all cells as text, no styles
  */
 export function generateCleanExcel(
   headers: string[], 
@@ -268,12 +369,4 @@ export function generateCleanExcel(
   
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-}
-
-function calculateDuration(start: string, end: string): string {
-  if (!start || !end) return '0';
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  const hours = Math.max(0, (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0))) / 60;
-  return hours.toString();
 }
