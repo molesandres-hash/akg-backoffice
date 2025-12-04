@@ -15,6 +15,7 @@ const defaultSettings: Omit<UserSettings, 'id'> = {
   defaultLocation: '',
   defaultEntityName: '',
   geminiApiKey: '',
+  extractionMode: 'standard',
 };
 
 export function UserSettingsForm() {
@@ -38,6 +39,7 @@ export function UserSettingsForm() {
           defaultLocation: saved.defaultLocation || '',
           defaultEntityName: saved.defaultEntityName || '',
           geminiApiKey: saved.geminiApiKey || '',
+          extractionMode: saved.extractionMode || 'standard',
         });
       }
     } catch (error) {

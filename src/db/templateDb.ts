@@ -32,6 +32,8 @@ export interface SystemTemplate {
   uploadDate: Date;
 }
 
+export type ExtractionMode = 'standard' | 'multi-step' | 'double-check';
+
 export interface UserSettings {
   id?: number;
   defaultTrainerName: string;
@@ -41,6 +43,7 @@ export interface UserSettings {
   defaultLocation: string;
   defaultEntityName: string;
   geminiApiKey: string;
+  extractionMode: ExtractionMode;
 }
 
 // === NEW: Default Data Interfaces ===
