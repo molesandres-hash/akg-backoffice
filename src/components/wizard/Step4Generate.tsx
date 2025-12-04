@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { 
   ArrowLeft, 
   Download, 
@@ -44,12 +45,19 @@ export function Step4Generate() {
   const [includeExcel, setIncludeExcel] = useState(true);
   const [includeFadRegistries, setIncludeFadRegistries] = useState(true);
   const [includeCertificates, setIncludeCertificates] = useState(false);
+  const [includeModulo5, setIncludeModulo5] = useState(false);
+  const [includeModulo7, setIncludeModulo7] = useState(false);
+  const [includeModulo8, setIncludeModulo8] = useState(false);
+  const [includeReadme, setIncludeReadme] = useState(false);
+  const [includeMetadata, setIncludeMetadata] = useState(false);
 
   const placeholders = mapCourseDataToPlaceholders(courseData);
   const warnings = validatePlaceholders(placeholders);
   
   const totalSessions = courseData.moduli.reduce((acc, m) => acc + m.sessioni.length, 0);
   const fadSessions = courseData.moduli.flatMap(m => m.sessioni.filter(s => s.is_fad));
+  const presenzaSessions = courseData.moduli.flatMap(m => m.sessioni.filter(s => !s.is_fad));
+  const beneficiari = courseData.partecipanti.filter(p => p.benefits);
   const isMultiModule = courseData.moduli.length > 1;
 
   const handleGenerate = async () => {
@@ -64,7 +72,12 @@ export function Step4Generate() {
         const config: Partial<ZipConfig> = {
           includeExcel,
           includeFadRegistries: includeFadRegistries && fadSessions.length > 0,
-          includeCertificates
+          includeCertificates,
+          includeModulo5: includeModulo5 && beneficiari.length > 0,
+          includeModulo7: includeModulo7 && beneficiari.length > 0,
+          includeModulo8: includeModulo8 && presenzaSessions.length > 0,
+          includeReadme,
+          includeMetadata
         };
         await generateCourseZip(courseData, selectedTemplateIds, config);
       }
@@ -230,8 +243,10 @@ export function Step4Generate() {
 
           {/* ZIP Options */}
           {exportMode === 'zip' && (
-            <div className="pt-4 border-t space-y-3">
+            <div className="pt-4 border-t space-y-4">
               <p className="text-sm font-medium">Opzioni ZIP</p>
+              
+              {/* Base options */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -265,6 +280,90 @@ export function Step4Generate() {
                   <Label htmlFor="includeCerts" className="text-sm">
                     Certificati individuali
                   </Label>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* GOL/PNRR options */}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-3">
+                  Beneficiari GOL/PNRR ({beneficiari.length})
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeModulo5" 
+                      checked={includeModulo5}
+                      disabled={beneficiari.length === 0}
+                      onCheckedChange={(c) => setIncludeModulo5(c === true)}
+                    />
+                    <Label htmlFor="includeModulo5" className="text-sm">
+                      Modulo 5 - Calendario Condizionalità
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeModulo7" 
+                      checked={includeModulo7}
+                      disabled={beneficiari.length === 0}
+                      onCheckedChange={(c) => setIncludeModulo7(c === true)}
+                    />
+                    <Label htmlFor="includeModulo7" className="text-sm">
+                      Modulo 7 - Comunicazione Evento
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Presence options */}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-3">
+                  Sessioni in presenza ({presenzaSessions.length})
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeModulo8" 
+                    checked={includeModulo8}
+                    disabled={presenzaSessions.length === 0}
+                    onCheckedChange={(c) => setIncludeModulo8(c === true)}
+                  />
+                  <Label htmlFor="includeModulo8" className="text-sm">
+                    Modulo 8 - Registro Giornaliero
+                  </Label>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Metadata options */}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-3">File opzionali</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeReadme" 
+                      checked={includeReadme}
+                      onCheckedChange={(c) => setIncludeReadme(c === true)}
+                    />
+                    <Label htmlFor="includeReadme" className="text-sm">
+                      README.txt (riepilogo contenuto)
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeMetadata" 
+                      checked={includeMetadata}
+                      onCheckedChange={(c) => setIncludeMetadata(c === true)}
+                    />
+                    <Label htmlFor="includeMetadata" className="text-sm">
+                      metadata.json (dati grezzi)
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>
