@@ -43,19 +43,82 @@ export interface UserSettings {
   geminiApiKey: string;
 }
 
+// === NEW: Default Data Interfaces ===
+
+export interface DefaultDocente {
+  id?: number;
+  nome: string;
+  cognome: string;
+  codiceFiscale: string;
+  email: string;
+  telefono: string;
+  isDefault: boolean;
+}
+
+export interface DefaultSupervisore {
+  id?: number;
+  nome: string;
+  cognome: string;
+  qualifica: string;
+  isDefault: boolean;
+}
+
+export interface DefaultEnte {
+  id?: number;
+  nome: string;
+  indirizzo: string;
+  isDefault: boolean;
+}
+
+export interface DefaultSede {
+  id?: number;
+  nome: string;
+  indirizzo: string;
+  citta: string;
+  cap: string;
+  provincia: string;
+  enteId?: number;
+  isDefault: boolean;
+}
+
+export interface DefaultPiattaformaFad {
+  id?: number;
+  nome: string;
+  linkBase: string;
+  isDefault: boolean;
+}
+
+export interface ListaArgomenti {
+  id?: number;
+  nome: string;
+  argomenti: string[];
+}
+
 // Database class
 class TemplateDatabase extends Dexie {
   templates!: Table<UserTemplate, number>;
   settings!: Table<UserSettings, number>;
   systemTemplates!: Table<SystemTemplate, number>;
+  docenti!: Table<DefaultDocente, number>;
+  supervisori!: Table<DefaultSupervisore, number>;
+  enti!: Table<DefaultEnte, number>;
+  sedi!: Table<DefaultSede, number>;
+  piattaforme!: Table<DefaultPiattaformaFad, number>;
+  listeArgomenti!: Table<ListaArgomenti, number>;
 
   constructor() {
     super('MagicFormDB');
     
-    this.version(2).stores({
+    this.version(3).stores({
       templates: '++id, name, category, uploadDate, isDefault',
       settings: '++id',
-      systemTemplates: '++id, &type, uploadDate'
+      systemTemplates: '++id, &type, uploadDate',
+      docenti: '++id, cognome, isDefault',
+      supervisori: '++id, cognome, isDefault',
+      enti: '++id, nome, isDefault',
+      sedi: '++id, nome, enteId, isDefault',
+      piattaforme: '++id, nome, isDefault',
+      listeArgomenti: '++id, nome'
     });
   }
 }
@@ -63,7 +126,7 @@ class TemplateDatabase extends Dexie {
 // Database instance
 export const db = new TemplateDatabase();
 
-// Helper functions
+// Helper functions - User Templates
 export async function getTemplatesByCategory(category: UserTemplate['category']): Promise<UserTemplate[]> {
   return db.templates.where('category').equals(category).toArray();
 }
@@ -84,6 +147,7 @@ export async function getTemplateById(id: number): Promise<UserTemplate | undefi
   return db.templates.get(id);
 }
 
+// Helper functions - Settings
 export async function getSettings(): Promise<UserSettings | undefined> {
   const settings = await db.settings.toArray();
   return settings[0];
@@ -103,7 +167,6 @@ export async function hasTemplates(): Promise<boolean> {
   return count > 0;
 }
 
-// Clear all templates (for reset functionality)
 export async function clearAllTemplates(): Promise<void> {
   await db.templates.clear();
 }
@@ -142,4 +205,161 @@ export async function deleteSystemTemplate(type: SystemTemplateType): Promise<vo
   if (template?.id) {
     await db.systemTemplates.delete(template.id);
   }
+}
+
+// === NEW: Docenti Functions ===
+export async function getAllDocenti(): Promise<DefaultDocente[]> {
+  return db.docenti.toArray();
+}
+
+export async function addDocente(docente: Omit<DefaultDocente, 'id'>): Promise<number> {
+  return db.docenti.add(docente);
+}
+
+export async function updateDocente(id: number, docente: Partial<DefaultDocente>): Promise<void> {
+  await db.docenti.update(id, docente);
+}
+
+export async function deleteDocente(id: number): Promise<void> {
+  await db.docenti.delete(id);
+}
+
+export async function getDefaultDocente(): Promise<DefaultDocente | undefined> {
+  return db.docenti.where('isDefault').equals(1).first();
+}
+
+export async function setDefaultDocente(id: number): Promise<void> {
+  await db.docenti.toCollection().modify({ isDefault: false });
+  await db.docenti.update(id, { isDefault: true });
+}
+
+// === NEW: Supervisori Functions ===
+export async function getAllSupervisori(): Promise<DefaultSupervisore[]> {
+  return db.supervisori.toArray();
+}
+
+export async function addSupervisore(supervisore: Omit<DefaultSupervisore, 'id'>): Promise<number> {
+  return db.supervisori.add(supervisore);
+}
+
+export async function updateSupervisore(id: number, supervisore: Partial<DefaultSupervisore>): Promise<void> {
+  await db.supervisori.update(id, supervisore);
+}
+
+export async function deleteSupervisore(id: number): Promise<void> {
+  await db.supervisori.delete(id);
+}
+
+export async function getDefaultSupervisore(): Promise<DefaultSupervisore | undefined> {
+  return db.supervisori.where('isDefault').equals(1).first();
+}
+
+export async function setDefaultSupervisore(id: number): Promise<void> {
+  await db.supervisori.toCollection().modify({ isDefault: false });
+  await db.supervisori.update(id, { isDefault: true });
+}
+
+// === NEW: Enti Functions ===
+export async function getAllEnti(): Promise<DefaultEnte[]> {
+  return db.enti.toArray();
+}
+
+export async function addEnte(ente: Omit<DefaultEnte, 'id'>): Promise<number> {
+  return db.enti.add(ente);
+}
+
+export async function updateEnte(id: number, ente: Partial<DefaultEnte>): Promise<void> {
+  await db.enti.update(id, ente);
+}
+
+export async function deleteEnte(id: number): Promise<void> {
+  await db.enti.delete(id);
+  // Also delete associated sedi
+  await db.sedi.where('enteId').equals(id).delete();
+}
+
+export async function getDefaultEnte(): Promise<DefaultEnte | undefined> {
+  return db.enti.where('isDefault').equals(1).first();
+}
+
+export async function setDefaultEnte(id: number): Promise<void> {
+  await db.enti.toCollection().modify({ isDefault: false });
+  await db.enti.update(id, { isDefault: true });
+}
+
+// === NEW: Sedi Functions ===
+export async function getAllSedi(): Promise<DefaultSede[]> {
+  return db.sedi.toArray();
+}
+
+export async function getSediByEnte(enteId: number): Promise<DefaultSede[]> {
+  return db.sedi.where('enteId').equals(enteId).toArray();
+}
+
+export async function addSede(sede: Omit<DefaultSede, 'id'>): Promise<number> {
+  return db.sedi.add(sede);
+}
+
+export async function updateSede(id: number, sede: Partial<DefaultSede>): Promise<void> {
+  await db.sedi.update(id, sede);
+}
+
+export async function deleteSede(id: number): Promise<void> {
+  await db.sedi.delete(id);
+}
+
+export async function getDefaultSede(): Promise<DefaultSede | undefined> {
+  return db.sedi.where('isDefault').equals(1).first();
+}
+
+export async function setDefaultSede(id: number): Promise<void> {
+  await db.sedi.toCollection().modify({ isDefault: false });
+  await db.sedi.update(id, { isDefault: true });
+}
+
+// === NEW: Piattaforme FAD Functions ===
+export async function getAllPiattaforme(): Promise<DefaultPiattaformaFad[]> {
+  return db.piattaforme.toArray();
+}
+
+export async function addPiattaforma(piattaforma: Omit<DefaultPiattaformaFad, 'id'>): Promise<number> {
+  return db.piattaforme.add(piattaforma);
+}
+
+export async function updatePiattaforma(id: number, piattaforma: Partial<DefaultPiattaformaFad>): Promise<void> {
+  await db.piattaforme.update(id, piattaforma);
+}
+
+export async function deletePiattaforma(id: number): Promise<void> {
+  await db.piattaforme.delete(id);
+}
+
+export async function getDefaultPiattaforma(): Promise<DefaultPiattaformaFad | undefined> {
+  return db.piattaforme.where('isDefault').equals(1).first();
+}
+
+export async function setDefaultPiattaforma(id: number): Promise<void> {
+  await db.piattaforme.toCollection().modify({ isDefault: false });
+  await db.piattaforme.update(id, { isDefault: true });
+}
+
+// === NEW: Liste Argomenti Functions ===
+export async function getAllListeArgomenti(): Promise<ListaArgomenti[]> {
+  return db.listeArgomenti.toArray();
+}
+
+export async function addListaArgomenti(lista: Omit<ListaArgomenti, 'id'>): Promise<number> {
+  return db.listeArgomenti.add(lista);
+}
+
+export async function updateListaArgomenti(id: number, lista: Partial<ListaArgomenti>): Promise<void> {
+  await db.listeArgomenti.update(id, lista);
+}
+
+export async function deleteListaArgomenti(id: number): Promise<void> {
+  await db.listeArgomenti.delete(id);
+}
+
+export async function getListaArgomentiById(id: number): Promise<ListaArgomenti | undefined> {
+  return db.listeArgomenti.get(id);
 }
