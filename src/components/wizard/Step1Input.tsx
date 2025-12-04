@@ -1,11 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Sparkles, Loader2, FileText, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, Loader2, FileText, AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
 import { toast } from 'sonner';
-import type { ExtractionResult } from '@/types/extraction';
+import { extractionService, type ExtractionMode, type ExtractionResponse } from '@/services/extraction';
+import { getSettings } from '@/db/templateDb';
+import { useState } from 'react';
 
 export function Step1Input() {
   const { 
@@ -19,6 +22,8 @@ export function Step1Input() {
     setExtractionError
   } = useWizardStore();
 
+  const [extractionResponse, setExtractionResponse] = useState<ExtractionResponse | null>(null);
+
   const handleExtract = async () => {
     if (!rawInput.trim()) {
       toast.error('Inserisci del testo da analizzare');
@@ -27,118 +32,42 @@ export function Step1Input() {
 
     setIsExtracting(true);
     setExtractionError(null);
+    setExtractionResponse(null);
 
     try {
-      // Simulate AI extraction for now
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get settings for extraction mode
+      const settings = await getSettings();
+      const mode: ExtractionMode = settings?.extractionMode || 'standard';
       
-      // Mock extraction result with new structure
-      const mockResult: ExtractionResult = {
-        corso: {
-          titolo: 'AI: Intelligenza Artificiale 100% FAD - Modulo 1',
-          id: '144176',
-          tipo: 'FAD',
-          data_inizio: '22/09/2025',
-          data_fine: '26/09/2025',
-          durata_totale: '20 hours',
-          ore_totali: '20',
-          ore_rendicontabili: '20',
-          capienza: '4/5',
-          capienza_numero: 4,
-          capienza_totale: 5,
-          stato: 'Aperto',
-          anno: '2025',
-          programma: '',
-          offerta_formativa: {
-            codice: '1540',
-            nome: 'GOL - FAD 100% - Offerta per Formazione mirata all\'inserimento lavorativo'
-          }
-        },
-        moduli: [
-          {
-            titolo: 'AI: Intelligenza Artificiale 100% FAD - Modulo 1',
-            id: 'AI: Intelligenza Artificiale 100% FAD - Modulo 1',
-            id_corso: '50039',
-            id_sezione: '144176',
-            argomenti: [
-              'Introduzione all\'Intelligenza Artificiale',
-              'Fondamenti di Machine Learning',
-              'Algoritmi di Apprendimento Supervisionato',
-              'Reti Neurali e Deep Learning',
-              'Elaborazione del Linguaggio Naturale (NLP)'
-            ],
-            data_inizio: '22/09/2025',
-            data_fine: '26/09/2025',
-            ore_totali: '20',
-            ore_rendicontabili: '20',
-            tipo_sede: 'Online',
-            provider: '',
-            capienza: '4/5',
-            stato: 'Aperto',
-            sessioni: [
-              { numero: 1, data_completa: '22/09/2025', giorno: '22', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Lunedì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
-              { numero: 2, data_completa: '23/09/2025', giorno: '23', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Martedì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
-              { numero: 3, data_completa: '24/09/2025', giorno: '24', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Mercoledì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
-              { numero: 4, data_completa: '25/09/2025', giorno: '25', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Giovedì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
-              { numero: 5, data_completa: '26/09/2025', giorno: '26', mese: 'Settembre', mese_numero: '09', anno: '2025', giorno_settimana: 'Venerdì', ora_inizio: '14:00', ora_fine: '18:00', sede: '', tipo_sede: 'online', is_fad: true },
-            ],
-            sessioni_presenza: []
-          }
-        ],
-        sede: {
-          tipo: '',
-          nome: 'Milano Porta Romana',
-          modalita: '',
-          indirizzo: 'Corso di Porta Romana 122'
-        },
-        ente: {
-          nome: 'AK Group S.r.l',
-          id: 'ent_1_sede_ak_3',
-          indirizzo: 'Via Recanate 2 Milano MI',
-          accreditato: {
-            nome: 'AK Group S.r.l',
-            via: 'Via Recanate 2',
-            numero_civico: '',
-            comune: 'Milano',
-            cap: '20124',
-            provincia: 'MI'
-          }
-        },
-        trainer: {
-          nome: 'Andres',
-          cognome: 'Moles',
-          nome_completo: 'Andres Moles',
-          codice_fiscale: 'MLSNRS97S25F205C'
-        },
-        tutor: {
-          nome: '',
-          cognome: '',
-          nome_completo: '',
-          codice_fiscale: ''
-        },
-        direttore: {
-          nome_completo: 'Hubbard Andrea',
-          qualifica: 'Supervisore'
-        },
-        partecipanti: [
-          { nome: 'FABRIZIO', cognome: 'VILCA CAMPOS', codiceFiscale: 'VLCFRZ01L30Z611L', email: '', telefono: '' },
-          { nome: 'PAOLO', cognome: 'PERRONE', codiceFiscale: 'PRRPLA78C09F205R', email: '', telefono: '' },
-          { nome: 'CLAUDIA', cognome: 'CANI', codiceFiscale: 'CNACLD79L52F205N', email: '', telefono: '' },
-          { nome: 'Cristian', cognome: 'Agnelli', codiceFiscale: 'GNLCST90A01F205X', email: '', telefono: '' },
-        ],
-        fad_settings: {
-          piattaforma: 'Microsoft Teams',
-          modalita_gestione: 'Sincrona',
-          modalita_valutazione: 'Test Scritto',
-          obiettivi_didattici: '',
-          zoom_meeting_id: '123213',
-          zoom_passcode: '12323321312',
-          zoom_link: 'https://teams.microsoft.com/meeting'
-        }
-      };
+      // Check if API key is configured
+      const apiKey = localStorage.getItem('gemini_api_key') || settings?.geminiApiKey;
+      if (!apiKey) {
+        throw new Error('Gemini API Key non configurata. Vai nelle Impostazioni > Generali per inserirla.');
+      }
+      
+      // Sync to localStorage if from DB
+      if (!localStorage.getItem('gemini_api_key') && settings?.geminiApiKey) {
+        localStorage.setItem('gemini_api_key', settings.geminiApiKey);
+      }
 
-      setExtractionResult(mockResult);
-      toast.success('Dati estratti con successo!');
+      // Perform extraction
+      const response = await extractionService.extract(rawInput, mode);
+      setExtractionResponse(response);
+      setExtractionResult(response.result);
+
+      // Show appropriate toast based on confidence
+      if (response.confidence === 'excellent') {
+        toast.success('Dati estratti con successo! Affidabilità: Eccellente');
+      } else if (response.confidence === 'reliable') {
+        toast.success('Dati estratti con successo! Affidabilità: Buona');
+      } else if (response.confidence === 'review_needed') {
+        toast.warning('Dati estratti - Revisione consigliata', {
+          description: 'Sono state rilevate alcune discrepanze'
+        });
+      } else {
+        toast.success('Dati estratti con successo!');
+      }
+
       nextStep();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Errore durante l\'estrazione';
@@ -146,6 +75,34 @@ export function Step1Input() {
       toast.error(message);
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const getConfidenceBadge = () => {
+    if (!extractionResponse?.confidence) return null;
+    
+    switch (extractionResponse.confidence) {
+      case 'excellent':
+        return (
+          <Badge variant="default" className="bg-green-500/20 text-green-600 border-green-500/30">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Eccellente ({extractionResponse.matchScore}%)
+          </Badge>
+        );
+      case 'reliable':
+        return (
+          <Badge variant="default" className="bg-blue-500/20 text-blue-600 border-blue-500/30">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Affidabile ({extractionResponse.matchScore}%)
+          </Badge>
+        );
+      case 'review_needed':
+        return (
+          <Badge variant="default" className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Revisione ({extractionResponse.matchScore}%)
+          </Badge>
+        );
     }
   };
 
@@ -165,6 +122,7 @@ export function Step1Input() {
           <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="w-5 h-5 text-accent" />
             Dati di Input
+            {getConfidenceBadge()}
           </CardTitle>
           <CardDescription>
             L'AI analizzerà il testo per estrarre automaticamente: partecipanti, date, orari e dettagli del corso
@@ -182,7 +140,22 @@ export function Step1Input() {
           {extractionError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Errore</AlertTitle>
               <AlertDescription>{extractionError}</AlertDescription>
+            </Alert>
+          )}
+
+          {extractionResponse?.warnings && extractionResponse.warnings.length > 0 && (
+            <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertTitle className="text-yellow-600">Discrepanze Rilevate</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                  {extractionResponse.warnings.map((warning, idx) => (
+                    <li key={idx}>{warning}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
             </Alert>
           )}
 
@@ -208,6 +181,14 @@ export function Step1Input() {
           </div>
         </CardContent>
       </Card>
+
+      <Alert variant="default" className="border-accent/30 bg-accent/5">
+        <Info className="h-4 w-4 text-accent" />
+        <AlertDescription className="text-sm">
+          L'estrazione avviene in locale usando la tua API Key di Google Gemini. 
+          Puoi configurare la modalità di estrazione nelle <strong>Impostazioni &gt; Generali</strong>.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <InfoCard
