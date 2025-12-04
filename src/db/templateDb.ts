@@ -46,7 +46,7 @@ export interface UserSettings {
   extractionMode: ExtractionMode;
 }
 
-// === NEW: Default Data Interfaces ===
+// === Default Data Interfaces ===
 
 export interface DefaultDocente {
   id?: number;
@@ -97,6 +97,26 @@ export interface ListaArgomenti {
   argomenti: string[];
 }
 
+// === NEW: Responsabile Certificazione con campi completi ===
+export interface DefaultResponsabileCertificazione {
+  id?: number;
+  nome: string;
+  cognome: string;
+  dataNascita: string;
+  luogoNascita: string;
+  residenza: string;
+  documento: string;
+  isDefault: boolean;
+}
+
+// === NEW: Offerta Formativa GOL ===
+export interface OffertaFormativaDB {
+  id?: number;
+  codice: string;
+  nome: string;
+  descrizione: string;
+}
+
 // Database class
 class TemplateDatabase extends Dexie {
   templates!: Table<UserTemplate, number>;
@@ -108,11 +128,13 @@ class TemplateDatabase extends Dexie {
   sedi!: Table<DefaultSede, number>;
   piattaforme!: Table<DefaultPiattaformaFad, number>;
   listeArgomenti!: Table<ListaArgomenti, number>;
+  responsabiliCertificazione!: Table<DefaultResponsabileCertificazione, number>;
+  offerteFormative!: Table<OffertaFormativaDB, number>;
 
   constructor() {
     super('MagicFormDB');
     
-    this.version(3).stores({
+    this.version(4).stores({
       templates: '++id, name, category, uploadDate, isDefault',
       settings: '++id',
       systemTemplates: '++id, &type, uploadDate',
@@ -121,7 +143,9 @@ class TemplateDatabase extends Dexie {
       enti: '++id, nome, isDefault',
       sedi: '++id, nome, enteId, isDefault',
       piattaforme: '++id, nome, isDefault',
-      listeArgomenti: '++id, nome'
+      listeArgomenti: '++id, nome',
+      responsabiliCertificazione: '++id, cognome, isDefault',
+      offerteFormative: '++id, codice, nome'
     });
   }
 }
@@ -210,7 +234,7 @@ export async function deleteSystemTemplate(type: SystemTemplateType): Promise<vo
   }
 }
 
-// === NEW: Docenti Functions ===
+// === Docenti Functions ===
 export async function getAllDocenti(): Promise<DefaultDocente[]> {
   return db.docenti.toArray();
 }
@@ -236,7 +260,7 @@ export async function setDefaultDocente(id: number): Promise<void> {
   await db.docenti.update(id, { isDefault: true });
 }
 
-// === NEW: Supervisori Functions ===
+// === Supervisori Functions ===
 export async function getAllSupervisori(): Promise<DefaultSupervisore[]> {
   return db.supervisori.toArray();
 }
@@ -262,7 +286,7 @@ export async function setDefaultSupervisore(id: number): Promise<void> {
   await db.supervisori.update(id, { isDefault: true });
 }
 
-// === NEW: Enti Functions ===
+// === Enti Functions ===
 export async function getAllEnti(): Promise<DefaultEnte[]> {
   return db.enti.toArray();
 }
@@ -290,7 +314,7 @@ export async function setDefaultEnte(id: number): Promise<void> {
   await db.enti.update(id, { isDefault: true });
 }
 
-// === NEW: Sedi Functions ===
+// === Sedi Functions ===
 export async function getAllSedi(): Promise<DefaultSede[]> {
   return db.sedi.toArray();
 }
@@ -320,7 +344,7 @@ export async function setDefaultSede(id: number): Promise<void> {
   await db.sedi.update(id, { isDefault: true });
 }
 
-// === NEW: Piattaforme FAD Functions ===
+// === Piattaforme FAD Functions ===
 export async function getAllPiattaforme(): Promise<DefaultPiattaformaFad[]> {
   return db.piattaforme.toArray();
 }
@@ -346,7 +370,7 @@ export async function setDefaultPiattaforma(id: number): Promise<void> {
   await db.piattaforme.update(id, { isDefault: true });
 }
 
-// === NEW: Liste Argomenti Functions ===
+// === Liste Argomenti Functions ===
 export async function getAllListeArgomenti(): Promise<ListaArgomenti[]> {
   return db.listeArgomenti.toArray();
 }
@@ -365,4 +389,51 @@ export async function deleteListaArgomenti(id: number): Promise<void> {
 
 export async function getListaArgomentiById(id: number): Promise<ListaArgomenti | undefined> {
   return db.listeArgomenti.get(id);
+}
+
+// === NEW: Responsabili Certificazione Functions ===
+export async function getAllResponsabiliCertificazione(): Promise<DefaultResponsabileCertificazione[]> {
+  return db.responsabiliCertificazione.toArray();
+}
+
+export async function addResponsabileCertificazione(resp: Omit<DefaultResponsabileCertificazione, 'id'>): Promise<number> {
+  return db.responsabiliCertificazione.add(resp);
+}
+
+export async function updateResponsabileCertificazione(id: number, resp: Partial<DefaultResponsabileCertificazione>): Promise<void> {
+  await db.responsabiliCertificazione.update(id, resp);
+}
+
+export async function deleteResponsabileCertificazione(id: number): Promise<void> {
+  await db.responsabiliCertificazione.delete(id);
+}
+
+export async function getDefaultResponsabileCertificazione(): Promise<DefaultResponsabileCertificazione | undefined> {
+  return db.responsabiliCertificazione.where('isDefault').equals(1).first();
+}
+
+export async function setDefaultResponsabileCertificazione(id: number): Promise<void> {
+  await db.responsabiliCertificazione.toCollection().modify({ isDefault: false });
+  await db.responsabiliCertificazione.update(id, { isDefault: true });
+}
+
+// === NEW: Offerte Formative Functions ===
+export async function getAllOfferteFormative(): Promise<OffertaFormativaDB[]> {
+  return db.offerteFormative.toArray();
+}
+
+export async function addOffertaFormativa(offerta: Omit<OffertaFormativaDB, 'id'>): Promise<number> {
+  return db.offerteFormative.add(offerta);
+}
+
+export async function updateOffertaFormativa(id: number, offerta: Partial<OffertaFormativaDB>): Promise<void> {
+  await db.offerteFormative.update(id, offerta);
+}
+
+export async function deleteOffertaFormativa(id: number): Promise<void> {
+  await db.offerteFormative.delete(id);
+}
+
+export async function getOffertaFormativaByCodice(codice: string): Promise<OffertaFormativaDB | undefined> {
+  return db.offerteFormative.where('codice').equals(codice).first();
 }

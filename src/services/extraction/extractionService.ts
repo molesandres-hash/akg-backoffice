@@ -3,6 +3,12 @@ import type { ExtractionResult, Modulo, Sessione } from '@/types/extraction';
 
 export type ExtractionMode = 'standard' | 'multi-step' | 'double-check';
 
+export interface StructuredInput {
+  corso: string;
+  moduli: string;
+  partecipanti: string;
+}
+
 export interface ExtractionResponse {
   result: ExtractionResult;
   confidence?: 'excellent' | 'reliable' | 'review_needed';
@@ -10,8 +16,30 @@ export interface ExtractionResponse {
   matchScore?: number;
 }
 
+// Formatta l'input strutturato per l'AI con separatori chiari
+function formatInputForAI(input: StructuredInput): string {
+  const parts: string[] = [];
+  
+  if (input.corso.trim()) {
+    parts.push(`=== DATI CORSO PRINCIPALE ===
+${input.corso}`);
+  }
+  
+  if (input.moduli.trim()) {
+    parts.push(`=== DATI MODULI (FONTE DI VERITÀ PER ID) ===
+${input.moduli}`);
+  }
+  
+  if (input.partecipanti.trim()) {
+    parts.push(`=== ELENCO PARTECIPANTI ===
+${input.partecipanti}`);
+  }
+  
+  return parts.join('\n\n');
+}
+
 // Helper to convert raw session to typed session
-function convertSession(raw: { data: string; ora_inizio: string; ora_fine: string; is_fad?: boolean }, index: number): Sessione {
+function convertSession(raw: { data: string; ora_inizio: string; ora_fine: string; is_fad?: boolean; sede?: string; tipo_sede?: string }, index: number): Sessione {
   const [giorno, meseNumero, anno] = raw.data.split('/');
   const mesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
   const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
@@ -30,8 +58,8 @@ function convertSession(raw: { data: string; ora_inizio: string; ora_fine: strin
     giorno_settimana: giornoSettimana,
     ora_inizio: raw.ora_inizio,
     ora_fine: raw.ora_fine,
-    sede: '',
-    tipo_sede: raw.is_fad ? 'online' : 'presenza',
+    sede: raw.sede || '',
+    tipo_sede: raw.is_fad ? 'online' : (raw.tipo_sede as 'presenza' | 'online' | 'fad' | '' || 'presenza'),
     is_fad: raw.is_fad ?? false
   };
 }
@@ -43,15 +71,15 @@ function convertToExtractionResult(raw: RawExtractionResult): ExtractionResult {
     id: m.id || `modulo_${idx + 1}`,
     id_corso: m.id_corso || '',
     id_sezione: m.id_sezione || '',
-    argomenti: [],
-    data_inizio: '',
-    data_fine: '',
+    argomenti: m.argomenti || [],
+    data_inizio: m.data_inizio || '',
+    data_fine: m.data_fine || '',
     ore_totali: m.ore_totali || '',
-    ore_rendicontabili: '',
+    ore_rendicontabili: m.ore_rendicontabili || '',
     tipo_sede: m.tipo_sede || 'Online',
-    provider: '',
-    capienza: '',
-    stato: '',
+    provider: m.provider || '',
+    capienza: m.capienza || '',
+    stato: m.stato || '',
     sessioni: (m.sessioni_raw || []).map((s, i) => convertSession(s, i)),
     sessioni_presenza: (m.sessioni_raw || []).filter(s => !s.is_fad).map((s, i) => convertSession(s, i))
   }));
@@ -59,8 +87,8 @@ function convertToExtractionResult(raw: RawExtractionResult): ExtractionResult {
   // Calculate dates from sessions
   moduli.forEach(m => {
     if (m.sessioni.length > 0) {
-      m.data_inizio = m.sessioni[0].data_completa;
-      m.data_fine = m.sessioni[m.sessioni.length - 1].data_completa;
+      if (!m.data_inizio) m.data_inizio = m.sessioni[0].data_completa;
+      if (!m.data_fine) m.data_fine = m.sessioni[m.sessioni.length - 1].data_completa;
     }
   });
 
@@ -71,7 +99,7 @@ function convertToExtractionResult(raw: RawExtractionResult): ExtractionResult {
       tipo: (raw.corso?.tipo as '' | 'FAD' | 'misto' | 'presenza') || 'FAD',
       data_inizio: raw.corso?.data_inizio || moduli[0]?.data_inizio || '',
       data_fine: raw.corso?.data_fine || moduli[moduli.length - 1]?.data_fine || '',
-      durata_totale: raw.corso?.ore_totali || '',
+      durata_totale: raw.corso?.durata_totale || raw.corso?.ore_totali || '',
       ore_totali: raw.corso?.ore_totali || '',
       ore_rendicontabili: raw.corso?.ore_rendicontabili || raw.corso?.ore_totali || '',
       capienza: raw.corso?.capienza || '',
@@ -79,14 +107,14 @@ function convertToExtractionResult(raw: RawExtractionResult): ExtractionResult {
       capienza_totale: parseInt(raw.corso?.capienza?.split('/')[1] || '0'),
       stato: raw.corso?.stato || '',
       anno: raw.corso?.anno || new Date().getFullYear().toString(),
-      programma: '',
-      offerta_formativa: { codice: '', nome: '' }
+      programma: raw.corso?.programma || '',
+      offerta_formativa: { codice: raw.offerta_formativa?.codice || '', nome: raw.offerta_formativa?.nome || '' }
     },
     moduli,
     sede: {
       tipo: raw.sede?.tipo || '',
       nome: raw.sede?.nome || '',
-      modalita: '',
+      modalita: raw.sede?.modalita || '',
       indirizzo: raw.sede?.indirizzo || ''
     },
     ente: {
@@ -123,16 +151,17 @@ function convertToExtractionResult(raw: RawExtractionResult): ExtractionResult {
       cognome: p.cognome || '',
       codiceFiscale: p.codice_fiscale || '',
       email: p.email || '',
-      telefono: p.telefono || ''
+      telefono: p.telefono || p.cellulare || '',
+      benefits: p.benefits === 'Sì' || p.benefits === 'Si' || p.benefits === 'sì' || p.benefits === 'si'
     })),
     fad_settings: {
-      piattaforma: raw.fad_settings?.piattaforma || '',
-      modalita_gestione: 'Sincrona',
-      modalita_valutazione: '',
+      piattaforma: raw.fad_info?.piattaforma || raw.fad_settings?.piattaforma || '',
+      modalita_gestione: raw.fad_info?.modalita_gestione || 'Sincrona',
+      modalita_valutazione: raw.fad_info?.modalita_valutazione || '',
       obiettivi_didattici: '',
-      zoom_meeting_id: raw.fad_settings?.meeting_id || '',
-      zoom_passcode: raw.fad_settings?.passcode || '',
-      zoom_link: raw.fad_settings?.link || ''
+      zoom_meeting_id: raw.fad_info?.id_riunione || raw.fad_settings?.meeting_id || '',
+      zoom_passcode: raw.fad_info?.passcode || raw.fad_settings?.passcode || '',
+      zoom_link: raw.fad_info?.link || raw.fad_settings?.link || ''
     }
   };
 }
@@ -159,7 +188,8 @@ function mergeResults(step1: RawExtractionResult, step2: RawExtractionResult, st
     direttore: step2.direttore,
     ente: step2.ente,
     sede: step2.sede,
-    fad_settings: step2.fad_settings
+    fad_settings: step2.fad_settings,
+    fad_info: step2.fad_info
   };
 }
 
@@ -214,21 +244,30 @@ function compareResults(result1: ExtractionResult, result2: ExtractionResult): {
 export class ExtractionService {
   /**
    * Main extraction method - routes to appropriate strategy based on mode
+   * Accepts structured input with 3 separate blocks
    */
-  async extract(rawInput: string, mode: ExtractionMode): Promise<ExtractionResponse> {
+  async extract(input: StructuredInput | string, mode: ExtractionMode): Promise<ExtractionResponse> {
     if (!geminiClient.hasApiKey()) {
       throw new Error('Gemini API Key non configurata. Vai nelle Impostazioni per inserirla.');
     }
 
+    // Convert string input to structured if needed (backward compatibility)
+    const structuredInput: StructuredInput = typeof input === 'string' 
+      ? { corso: input, moduli: '', partecipanti: '' }
+      : input;
+
+    // Format input for AI
+    const formattedInput = formatInputForAI(structuredInput);
+
     switch (mode) {
       case 'standard':
-        return this.extractStandard(rawInput);
+        return this.extractStandard(formattedInput);
       case 'multi-step':
-        return this.extractMultiStep(rawInput);
+        return this.extractMultiStep(formattedInput);
       case 'double-check':
-        return this.extractDoubleCheck(rawInput);
+        return this.extractDoubleCheck(formattedInput);
       default:
-        return this.extractStandard(rawInput);
+        return this.extractStandard(formattedInput);
     }
   }
 

@@ -25,23 +25,38 @@ export interface RawExtractionResult {
     tipo?: string;
     data_inizio?: string;
     data_fine?: string;
+    durata_totale?: string;
     ore_totali?: string;
     ore_rendicontabili?: string;
     capienza?: string;
     stato?: string;
     anno?: string;
+    programma?: string;
+  };
+  offerta_formativa?: {
+    codice?: string;
+    nome?: string;
   };
   moduli?: Array<{
     id?: string;
     id_corso?: string;
     id_sezione?: string;
     titolo?: string;
+    data_inizio?: string;
+    data_fine?: string;
     ore_totali?: string;
+    ore_rendicontabili?: string;
     tipo_sede?: string;
+    provider?: string;
+    capienza?: string;
+    stato?: string;
+    argomenti?: string[];
     sessioni_raw?: Array<{
       data: string;
       ora_inizio: string;
       ora_fine: string;
+      sede?: string;
+      tipo_sede?: string;
       is_fad?: boolean;
     }>;
   }>;
@@ -58,7 +73,12 @@ export interface RawExtractionResult {
     codice_fiscale?: string;
     email?: string;
     telefono?: string;
+    cellulare?: string;
+    programma?: string;
+    ufficio?: string;
+    case_manager?: string;
     benefits?: string;
+    frequenza?: string;
   }>;
   trainer?: {
     nome?: string;
@@ -76,6 +96,27 @@ export interface RawExtractionResult {
     nome_completo?: string;
     qualifica?: string;
   };
+  responsabili?: {
+    responsabile_certificazione?: {
+      nome?: string;
+      cognome?: string;
+    };
+    direttore?: {
+      nome?: string;
+      cognome?: string;
+    };
+    supervisore?: {
+      nome?: string;
+      cognome?: string;
+    };
+  };
+  verbale?: {
+    data?: string;
+    ora?: string;
+    luogo?: string;
+    tipo_prova?: string;
+    descrizione_prova?: string;
+  };
   ente?: {
     id?: string;
     nome?: string;
@@ -85,12 +126,21 @@ export interface RawExtractionResult {
     nome?: string;
     indirizzo?: string;
     tipo?: string;
+    modalita?: string;
   };
   fad_settings?: {
     piattaforma?: string;
     link?: string;
     meeting_id?: string;
     passcode?: string;
+  };
+  fad_info?: {
+    piattaforma?: string;
+    modalita_gestione?: string;
+    modalita_valutazione?: string;
+    id_riunione?: string;
+    passcode?: string;
+    link?: string;
   };
 }
 
@@ -157,7 +207,11 @@ export class GeminiClient {
    * Standard extraction - single API call for all data
    */
   async extractStandard(input: string): Promise<RawExtractionResult> {
-    const prompt = `Analizza i seguenti dati e estrai tutte le informazioni sul corso, moduli, partecipanti e personale.`;
+    const prompt = `Analizza i seguenti dati e estrai tutte le informazioni sul corso, moduli, partecipanti e personale.
+    
+RICORDA: 
+- Dai PRIORITÀ ASSOLUTA agli ID Corso e ID Sezione che trovi nella sezione "DATI MODULI (FONTE DI VERITÀ PER ID)"
+- IGNORA gli ID presenti nella sezione "DATI CORSO PRINCIPALE" se differiscono da quelli nei moduli`;
     return this.generateContent(SYSTEM_INSTRUCTION, prompt, input, EXTRACTION_SCHEMA);
   }
 

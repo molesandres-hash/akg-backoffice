@@ -1,7 +1,17 @@
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWizardStore } from '@/store/wizardStore';
+import { 
+  getAllDocenti, 
+  getAllSupervisori,
+  getAllResponsabiliCertificazione,
+  type DefaultDocente, 
+  type DefaultSupervisore,
+  type DefaultResponsabileCertificazione 
+} from '@/db/templateDb';
 
 export function PersonaleForm() {
   const { 
@@ -14,6 +24,57 @@ export function PersonaleForm() {
   } = useWizardStore();
   const { trainer, tutor, direttore, supervisore, responsabile_certificazione } = courseData;
 
+  const [docentiList, setDocentiList] = useState<DefaultDocente[]>([]);
+  const [supervisoriList, setSupervisoriList] = useState<DefaultSupervisore[]>([]);
+  const [responsabiliList, setResponsabiliList] = useState<DefaultResponsabileCertificazione[]>([]);
+
+  // Carica dati predefiniti
+  useEffect(() => {
+    getAllDocenti().then(setDocentiList);
+    getAllSupervisori().then(setSupervisoriList);
+    getAllResponsabiliCertificazione().then(setResponsabiliList);
+  }, []);
+
+  const handleDocenteSelect = (value: string) => {
+    if (value === 'manual') return;
+    
+    const docente = docentiList.find(d => d.id === Number(value));
+    if (docente) {
+      updateTrainer({
+        nome: docente.nome,
+        cognome: docente.cognome,
+        nome_completo: `${docente.nome} ${docente.cognome}`,
+        codice_fiscale: docente.codiceFiscale,
+        email: docente.email,
+        telefono: docente.telefono
+      });
+    }
+  };
+
+  const handleSupervisoreSelect = (value: string) => {
+    if (value === 'manual') return;
+    
+    const sup = supervisoriList.find(s => s.id === Number(value));
+    if (sup) {
+      updateSupervisore({
+        nome_completo: `${sup.nome} ${sup.cognome}`,
+        qualifica: sup.qualifica
+      });
+    }
+  };
+
+  const handleResponsabileSelect = (value: string) => {
+    if (value === 'manual') return;
+    
+    const resp = responsabiliList.find(r => r.id === Number(value));
+    if (resp) {
+      updateResponsabileCertificazione({
+        nome_completo: `${resp.nome} ${resp.cognome}`,
+        qualifica: 'Responsabile Certificazione'
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Prima riga: Docente e Tutor */}
@@ -24,6 +85,26 @@ export function PersonaleForm() {
             <CardTitle className="text-base">Docente</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Dropdown selezione docente */}
+            {docentiList.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Seleziona Docente Predefinito</Label>
+                <Select onValueChange={handleDocenteSelect}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Seleziona docente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">-- Inserisci manualmente --</SelectItem>
+                    {docentiList.map(d => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.nome} {d.cognome} - {d.codiceFiscale}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Nome</Label>
@@ -187,6 +268,26 @@ export function PersonaleForm() {
             <CardTitle className="text-base">Supervisore</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Dropdown selezione supervisore */}
+            {supervisoriList.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Seleziona Predefinito</Label>
+                <Select onValueChange={handleSupervisoreSelect}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Seleziona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">-- Inserisci manualmente --</SelectItem>
+                    {supervisoriList.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.nome} {s.cognome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label className="text-xs">Nome Completo</Label>
               <Input
@@ -215,6 +316,26 @@ export function PersonaleForm() {
             <CardTitle className="text-base">Resp. Certificazione</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Dropdown selezione responsabile */}
+            {responsabiliList.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Seleziona Predefinito</Label>
+                <Select onValueChange={handleResponsabileSelect}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Seleziona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">-- Inserisci manualmente --</SelectItem>
+                    {responsabiliList.map(r => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        {r.nome} {r.cognome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label className="text-xs">Nome Completo</Label>
               <Input
