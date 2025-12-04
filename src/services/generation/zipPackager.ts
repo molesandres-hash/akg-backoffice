@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import type { CourseData, PlaceholderMap, Partecipante, Sessione } from '@/types/extraction';
-import { mapCourseDataToPlaceholders } from '@/services/mapping/placeholderMapper';
+import { mapCourseDataToPlaceholders, calculateDurationWithLunchBreak } from '@/services/mapping/placeholderMapper';
 import { generateDocument } from './docxGenerator';
 import { 
   generateRegistroPresenze, 
@@ -428,6 +428,8 @@ function createFadSessionPlaceholders(
   sessionIndex: number,
   basePlaceholders: PlaceholderMap
 ): Partial<PlaceholderMap> & Record<string, any> {
+  const durata = calculateDurationWithLunchBreak(session.ora_inizio, session.ora_fine);
+  
   return {
     ...basePlaceholders,
     DATA_SESSIONE: session.data_completa,
@@ -436,7 +438,8 @@ function createFadSessionPlaceholders(
     ANNO_SESSIONE: session.anno,
     ORA_INIZIO_SESSIONE: session.ora_inizio,
     ORA_FINE_SESSIONE: session.ora_fine,
-    DURATA_SESSIONE: session.durata || '',
+    DURATA_SESSIONE: durata.toString(),
+    ARGOMENTO_SESSIONE: session.argomento || '',
     NUMERO_SESSIONE: sessionIndex + 1,
     PARTECIPANTI_SESSIONE: data.partecipanti.map((p, i) => ({
       numero: i + 1,
@@ -523,6 +526,8 @@ function createSessionPlaceholders(
   sessione: Sessione,
   basePlaceholders: PlaceholderMap
 ): Partial<PlaceholderMap> & Record<string, any> {
+  const durata = calculateDurationWithLunchBreak(sessione.ora_inizio, sessione.ora_fine);
+  
   return {
     ...basePlaceholders,
     DATA_SESSIONE: sessione.data_completa,
@@ -532,8 +537,12 @@ function createSessionPlaceholders(
     ORA_INIZIO_SESSIONE: sessione.ora_inizio,
     ORA_FINE_SESSIONE: sessione.ora_fine,
     SEDE_SESSIONE: sessione.sede,
-    DURATA_SESSIONE: sessione.durata || '',
+    DURATA_SESSIONE: durata.toString(),
     ARGOMENTO_SESSIONE: sessione.argomento || '',
+    // Alias per registro giornaliero
+    ARGOMENTO_GIORNO: sessione.argomento || '',
+    MATERIA_GIORNO: sessione.argomento || '',
+    CONTENUTI_GIORNO: sessione.argomento || '',
     PARTECIPANTI_SESSIONE: data.partecipanti.map((p, i) => ({
       numero: i + 1,
       nome: p.nome,

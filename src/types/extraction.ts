@@ -242,8 +242,16 @@ export interface PlaceholderMap {
   PASSCODE: string;
   ORE_FAD: string;
   ORE_TOTALE_FAD: string;
+  ORE_PRESENZA: string;
+  ORE_TOTALE_PRESENZA: string;
+  ORE_TOTALI_CALCOLATE: string;
   NUMERO_PAGINE: string;
   DATA_VIDIMAZIONE: string;
+  
+  // Placeholder per registro giornaliero (per sessione)
+  ARGOMENTO_GIORNO?: string;
+  MATERIA_GIORNO?: string;
+  CONTENUTI_GIORNO?: string;
   
   // Modulo corrente (per documenti per-modulo)
   MODULO_TITOLO: string;

@@ -6,7 +6,9 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
   const allSessions = data.moduli.flatMap(m => m.sessioni);
   const fadSessions = allSessions.filter(s => s.is_fad);
   const presenzaSessions = allSessions.filter(s => !s.is_fad);
-  const totalFadHours = fadSessions.reduce((acc, s) => acc + calculateDuration(s.ora_inizio, s.ora_fine), 0);
+  const totalFadHours = fadSessions.reduce((acc, s) => acc + calculateDurationWithLunchBreak(s.ora_inizio, s.ora_fine), 0);
+  const totalPresenzaHours = presenzaSessions.reduce((acc, s) => acc + calculateDurationWithLunchBreak(s.ora_inizio, s.ora_fine), 0);
+  const totalHoursCalculated = totalFadHours + totalPresenzaHours;
   const sedeAccreditataCompleta = [data.ente.accreditato.nome, [data.ente.accreditato.via, data.ente.accreditato.numero_civico].filter(Boolean).join(' '), data.ente.accreditato.comune].filter(Boolean).join(' - ');
   const verbaleLuogo = data.ente.accreditato.comune || data.sede.nome?.split(' ')[0] || '';
   
@@ -33,6 +35,8 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     OBIETTIVI_DIDATTICI: data.fad_settings.obiettivi_didattici || '', ZOOM_MEETING_ID: data.fad_settings.zoom_meeting_id || '', ZOOM_PASSCODE: data.fad_settings.zoom_passcode || '',
     ZOOM_LINK: data.fad_settings.zoom_link || '', ID_RIUNIONE: data.fad_settings.zoom_meeting_id || '', PASSCODE: data.fad_settings.zoom_passcode || '', 
     ORE_FAD: totalFadHours.toString(), ORE_TOTALE_FAD: totalFadHours.toString(),
+    ORE_PRESENZA: totalPresenzaHours.toString(), ORE_TOTALE_PRESENZA: totalPresenzaHours.toString(),
+    ORE_TOTALI_CALCOLATE: totalHoursCalculated.toString(),
     NUMERO_PAGINE: numeroPagine.toString(), DATA_VIDIMAZIONE: dataVidimazione,
     MODULO_TITOLO: currentModule?.titolo || data.corso.titolo || '', MODULO_ID: currentModule?.id || '', MODULO_ID_SEZIONE: currentModule?.id_sezione || '', MODULO_NUMERO: moduleIndex + 1,
     MODULO_DATA_INIZIO: currentModule?.data_inizio || '', MODULO_DATA_FINE: currentModule?.data_fine || '', MODULO_ORE: currentModule?.ore_totali || '', MODULO_TIPO_SEDE: currentModule?.tipo_sede || '',
@@ -49,5 +53,40 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
 
 function formatItalianDate(date: Date): string { return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`; }
 function getItalianMonth(m: number): string { return ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'][m] || ''; }
-function calculateDuration(start: string, end: string): number { if (!start || !end) return 0; const [sh, sm] = start.split(':').map(Number); const [eh, em] = end.split(':').map(Number); return Math.max(0, Math.round(((eh * 60 + (em || 0)) - (sh * 60 + (sm || 0))) / 60)); }
+// Costanti pausa pranzo
+const LUNCH_BREAK_START = 13;
+const LUNCH_BREAK_END = 14;
+
+/**
+ * Calcola la durata in ore escludendo la pausa pranzo 13:00-14:00
+ */
+export function calculateDurationWithLunchBreak(start: string, end: string): number {
+  if (!start || !end) return 0;
+  
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  
+  const startMinutes = sh * 60 + (sm || 0);
+  const endMinutes = eh * 60 + (em || 0);
+  
+  let totalMinutes = endMinutes - startMinutes;
+  
+  // Verifica sovrapposizione con pausa pranzo (13:00-14:00)
+  const lunchStartMinutes = LUNCH_BREAK_START * 60;
+  const lunchEndMinutes = LUNCH_BREAK_END * 60;
+  
+  if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
+    const overlapStart = Math.max(startMinutes, lunchStartMinutes);
+    const overlapEnd = Math.min(endMinutes, lunchEndMinutes);
+    const overlapMinutes = Math.max(0, overlapEnd - overlapStart);
+    totalMinutes -= overlapMinutes;
+  }
+  
+  return Math.max(0, Math.round(totalMinutes / 60));
+}
+
+// Alias per retrocompatibilità
+function calculateDuration(start: string, end: string): number {
+  return calculateDurationWithLunchBreak(start, end);
+}
 export function validatePlaceholders(map: PlaceholderMap): string[] { const w: string[] = []; if (!map.CORSO_TITOLO) w.push('Titolo corso mancante'); if (!map.ENTE_NOME) w.push('Nome ente mancante'); if (map.STUDENTI.length === 0) w.push('Nessun partecipante'); if (map.SESSIONI.length === 0) w.push('Nessuna sessione'); return w; }
