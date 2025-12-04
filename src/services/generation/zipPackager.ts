@@ -81,27 +81,40 @@ async function generateSingleModuleZip(
   const placeholders = mapCourseDataToPlaceholders(data, moduleIndex);
   const currentModule = data.moduli[moduleIndex];
   
+  console.log('📦 [zipPackager] Starting ZIP generation for module:', moduleIndex);
+  console.log('📦 [zipPackager] Course ID:', data.corso.id);
+  
   // ROOT FILES
   // Registro Presenza ID nella root
   const registroPresenzaTemplate = await getSystemTemplate('registro_presenza');
+  console.log('📄 [zipPackager] registro_presenza template:', registroPresenzaTemplate ? `FOUND (${registroPresenzaTemplate.name}, ${registroPresenzaTemplate.fileBlob?.size} bytes)` : 'NOT FOUND');
+  
   if (registroPresenzaTemplate) {
     try {
       const docBlob = await generateDocument(registroPresenzaTemplate.fileBlob, placeholders, registroPresenzaTemplate.name);
       zip.file(`Registro presenza ${data.corso.id}.docx`, docBlob);
+      console.log('✅ [zipPackager] Added Registro Presenza to ZIP');
     } catch (error) {
-      console.error('Error generating Registro Presenza:', error);
+      console.error('❌ [zipPackager] Error generating Registro Presenza:', error);
     }
+  } else {
+    console.warn('⚠️ [zipPackager] Skipping Registro Presenza - template not configured');
   }
 
   // Verbale Ammissione Esame nella root
   const verbaleAmmissioneTemplate = await getSystemTemplate('verbale_ammissione');
+  console.log('📄 [zipPackager] verbale_ammissione template:', verbaleAmmissioneTemplate ? `FOUND (${verbaleAmmissioneTemplate.name}, ${verbaleAmmissioneTemplate.fileBlob?.size} bytes)` : 'NOT FOUND');
+  
   if (verbaleAmmissioneTemplate) {
     try {
       const docBlob = await generateDocument(verbaleAmmissioneTemplate.fileBlob, placeholders, verbaleAmmissioneTemplate.name);
       zip.file(`Verbale_Ammissione_Esame_${data.corso.id}.docx`, docBlob);
+      console.log('✅ [zipPackager] Added Verbale Ammissione to ZIP');
     } catch (error) {
-      console.error('Error generating Verbale Ammissione:', error);
+      console.error('❌ [zipPackager] Error generating Verbale Ammissione:', error);
     }
+  } else {
+    console.warn('⚠️ [zipPackager] Skipping Verbale Ammissione - template not configured');
   }
 
   // README.txt
@@ -161,6 +174,7 @@ async function generateSingleModuleZip(
       const fadFolder = zip.folder(config.fadFolderName);
       if (fadFolder) {
         const fadTemplate = await getSystemTemplate('modello_b_fad');
+        console.log('📄 [zipPackager] modello_b_fad template:', fadTemplate ? `FOUND (${fadTemplate.name})` : 'NOT FOUND');
         
         if (fadTemplate) {
           for (let i = 0; i < fadSessions.length; i++) {
@@ -175,12 +189,13 @@ async function generateSingleModuleZip(
               );
               const dateStr = session.data_completa.replace(/\//g, '-');
               fadFolder.file(`Modello_A_FAD_${dateStr}.docx`, docBlob);
+              console.log('✅ [zipPackager] Added FAD registry for', session.data_completa);
             } catch (error) {
-              console.error(`Error generating FAD registry for ${session.data_completa}:`, error);
+              console.error(`❌ [zipPackager] Error generating FAD registry for ${session.data_completa}:`, error);
             }
           }
         } else {
-          console.warn('Template Modello B FAD non configurato nelle impostazioni');
+          console.warn('⚠️ [zipPackager] Template Modello B FAD non configurato nelle impostazioni');
         }
       }
     }
@@ -189,6 +204,7 @@ async function generateSingleModuleZip(
   // 4. Generate certificates (one per participant) - certificati AKG folder
   if (config.includeCertificates) {
     const certTemplate = await getSystemTemplate('certificato');
+    console.log('📄 [zipPackager] certificato template:', certTemplate ? `FOUND (${certTemplate.name})` : 'NOT FOUND');
     
     if (certTemplate && data.partecipanti.length > 0) {
       const certFolder = zip.folder(config.certificatesFolderName);
@@ -205,12 +221,12 @@ async function generateSingleModuleZip(
             const fileName = `Verbale Finale ${data.corso.id} - ${partecipante.cognome}_${partecipante.nome}.docx`;
             certFolder.file(sanitizeFileName(fileName), docBlob);
           } catch (error) {
-            console.error(`Error generating certificate for ${partecipante.cognome}:`, error);
+            console.error(`❌ [zipPackager] Error generating certificate for ${partecipante.cognome}:`, error);
           }
         }
       }
     } else if (!certTemplate) {
-      console.warn('Template Certificato non configurato nelle impostazioni');
+      console.warn('⚠️ [zipPackager] Template Certificato non configurato nelle impostazioni');
     }
   }
 
@@ -218,6 +234,7 @@ async function generateSingleModuleZip(
   if (config.includeModulo5) {
     const beneficiari = data.partecipanti.filter(p => p.benefits);
     const calCondTemplate = await getSystemTemplate('calendario_condizionalita');
+    console.log('📄 [zipPackager] calendario_condizionalita template:', calCondTemplate ? `FOUND (${calCondTemplate.name})` : 'NOT FOUND');
     
     if (calCondTemplate && beneficiari.length > 0) {
       const mod5Folder = zip.folder(config.modulo5FolderName);
@@ -234,12 +251,12 @@ async function generateSingleModuleZip(
             const fileName = `Calendario_condizionalita_${data.corso.id}_${ben.cognome}_${ben.nome}.docx`;
             mod5Folder.file(sanitizeFileName(fileName), docBlob);
           } catch (error) {
-            console.error(`Error generating Modulo 5 for ${ben.cognome}:`, error);
+            console.error(`❌ [zipPackager] Error generating Modulo 5 for ${ben.cognome}:`, error);
           }
         }
       }
     } else if (!calCondTemplate && beneficiari.length > 0) {
-      console.warn('Template Calendario Condizionalità non configurato nelle impostazioni');
+      console.warn('⚠️ [zipPackager] Template Calendario Condizionalità non configurato nelle impostazioni');
     }
   }
 
@@ -247,6 +264,7 @@ async function generateSingleModuleZip(
   if (config.includeModulo7) {
     const beneficiari = data.partecipanti.filter(p => p.benefits);
     const comEventoTemplate = await getSystemTemplate('comunicazione_evento');
+    console.log('📄 [zipPackager] comunicazione_evento template:', comEventoTemplate ? `FOUND (${comEventoTemplate.name})` : 'NOT FOUND');
     
     if (comEventoTemplate && beneficiari.length > 0 && currentModule?.sessioni?.length > 0) {
       const mod7Folder = zip.folder(config.modulo7FolderName);
@@ -268,14 +286,14 @@ async function generateSingleModuleZip(
                 const fileName = `Comunicazione_evento_${dateStr}_${ben.cognome}_${ben.nome}.docx`;
                 dayFolder.file(sanitizeFileName(fileName), docBlob);
               } catch (error) {
-                console.error(`Error generating Modulo 7 for ${ben.cognome} on ${dateStr}:`, error);
+                console.error(`❌ [zipPackager] Error generating Modulo 7 for ${ben.cognome} on ${dateStr}:`, error);
               }
             }
           }
         }
       }
     } else if (!comEventoTemplate && beneficiari.length > 0) {
-      console.warn('Template Comunicazione Evento non configurato nelle impostazioni');
+      console.warn('⚠️ [zipPackager] Template Comunicazione Evento non configurato nelle impostazioni');
     }
   }
 
@@ -283,6 +301,7 @@ async function generateSingleModuleZip(
   if (config.includeModulo8) {
     const presenzaSessions = currentModule?.sessioni?.filter(s => !s.is_fad) || [];
     const regGiornTemplate = await getSystemTemplate('registro_giornaliero');
+    console.log('📄 [zipPackager] registro_giornaliero template:', regGiornTemplate ? `FOUND (${regGiornTemplate.name})` : 'NOT FOUND');
     
     if (regGiornTemplate && presenzaSessions.length > 0) {
       const mod8Folder = zip.folder(config.modulo8FolderName);
@@ -299,12 +318,12 @@ async function generateSingleModuleZip(
             );
             mod8Folder.file(`Registro_Giornaliero_${dateStr}.docx`, docBlob);
           } catch (error) {
-            console.error(`Error generating Modulo 8 for ${dateStr}:`, error);
+            console.error(`❌ [zipPackager] Error generating Modulo 8 for ${dateStr}:`, error);
           }
         }
       }
     } else if (!regGiornTemplate && presenzaSessions.length > 0) {
-      console.warn('Template Registro Giornaliero non configurato nelle impostazioni');
+      console.warn('⚠️ [zipPackager] Template Registro Giornaliero non configurato nelle impostazioni');
     }
   }
   

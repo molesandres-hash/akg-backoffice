@@ -106,15 +106,24 @@ export function SystemTemplateSlots() {
   const loadTemplates = async () => {
     try {
       const allTemplates = await getAllSystemTemplates();
+      console.log('📂 [SystemTemplateSlots] All system templates from DB:', allTemplates);
+      console.log('📂 [SystemTemplateSlots] Templates count:', allTemplates.length);
+      
       const templateMap: Record<string, SystemTemplate | null> = {};
       
       SYSTEM_TEMPLATE_SLOTS.forEach(slot => {
-        templateMap[slot.type] = allTemplates.find(t => t.type === slot.type) || null;
+        const found = allTemplates.find(t => t.type === slot.type);
+        templateMap[slot.type] = found || null;
+        if (found) {
+          console.log(`✅ [SystemTemplateSlots] Found template for "${slot.type}":`, found.name, 'Blob size:', found.fileBlob?.size);
+        } else {
+          console.log(`⚠️ [SystemTemplateSlots] No template for "${slot.type}"`);
+        }
       });
       
       setTemplates(templateMap as Record<SystemTemplateType, SystemTemplate | null>);
     } catch (error) {
-      console.error('Error loading system templates:', error);
+      console.error('❌ [SystemTemplateSlots] Error loading system templates:', error);
       toast.error('Errore nel caricamento dei template');
     } finally {
       setLoading(false);
@@ -124,11 +133,13 @@ export function SystemTemplateSlots() {
   const handleUpload = async (type: SystemTemplateType, file: File) => {
     setUploadingSlot(type);
     try {
+      console.log(`📤 [SystemTemplateSlots] Uploading template for "${type}":`, file.name, 'Size:', file.size);
       await setSystemTemplate(type, file, file.name);
+      console.log(`✅ [SystemTemplateSlots] Template "${type}" saved successfully`);
       await loadTemplates();
       toast.success('Template caricato');
     } catch (error) {
-      console.error('Error uploading template:', error);
+      console.error('❌ [SystemTemplateSlots] Error uploading template:', error);
       toast.error('Errore nel caricamento');
     } finally {
       setUploadingSlot(null);
