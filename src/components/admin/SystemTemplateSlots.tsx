@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { 
   FileText, FileSpreadsheet, Award, Calendar, 
   ClipboardCheck, ClipboardList, FileCheck,
-  Upload, Download, Trash2, Check, AlertCircle, Loader2
+  Upload, Download, Trash2, Check, AlertCircle, Loader2,
+  MessageSquare, CalendarDays, BookOpen, FileSignature
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,18 @@ interface TemplateSlotConfig {
 
 const SYSTEM_TEMPLATE_SLOTS: TemplateSlotConfig[] = [
   {
+    type: 'registro_presenza',
+    label: 'Registro Presenza ID',
+    description: 'Registro presenze con ID per vidimazione - nella root',
+    icon: ClipboardList,
+  },
+  {
+    type: 'verbale_ammissione',
+    label: 'Verbale Ammissione Esame',
+    description: 'Verbale per ammissione alle prove finali - nella root',
+    icon: ClipboardCheck,
+  },
+  {
     type: 'modello_a_fad',
     label: 'Modello A FAD',
     description: 'Registro generale FAD - generato 1 volta per corso',
@@ -40,30 +53,42 @@ const SYSTEM_TEMPLATE_SLOTS: TemplateSlotConfig[] = [
   {
     type: 'certificato',
     label: 'Certificato/Attestato',
-    description: 'Attestato di partecipazione - generato per ogni partecipante',
+    description: 'Attestato di partecipazione - cartella certificati AKG',
     icon: Award,
   },
   {
     type: 'calendario_condizionalita',
     label: 'Calendario Condizionalità',
-    description: 'Modulo 5 per beneficiari GOL/PNRR',
+    description: 'Modulo 5 - per beneficiari GOL/PNRR',
     icon: Calendar,
   },
   {
-    type: 'verbale_ammissione',
-    label: 'Verbale Ammissione Esame',
-    description: 'Verbale per ammissione alle prove finali',
-    icon: ClipboardCheck,
+    type: 'comunicazione_evento',
+    label: 'Comunicazione Evento',
+    description: 'Modulo 7 - per ogni beneficiario per ogni lezione',
+    icon: MessageSquare,
   },
   {
-    type: 'registro_presenza',
-    label: 'Registro Presenza',
-    description: 'Registro presenze cartaceo',
-    icon: ClipboardList,
+    type: 'registro_giornaliero',
+    label: 'Registro Giornaliero',
+    description: 'Modulo 8 - registro presenze per sessioni in presenza',
+    icon: CalendarDays,
+  },
+  {
+    type: 'registro_didattico',
+    label: 'Registro Didattico',
+    description: 'Registro didattico del corso - generato 1 volta',
+    icon: BookOpen,
+  },
+  {
+    type: 'verbale_scrutinio',
+    label: 'Verbale Scrutinio',
+    description: 'Verbale di scrutinio finale del corso',
+    icon: FileSignature,
   },
   {
     type: 'verbale_finale',
-    label: 'Verbale Finale/Scrutinio',
+    label: 'Verbale Finale',
     description: 'Verbale di chiusura corso e valutazione',
     icon: FileCheck,
   },

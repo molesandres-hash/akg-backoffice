@@ -68,6 +68,7 @@ export interface Partecipante {
   email?: string;
   telefono?: string;
   ore_presenza?: number;
+  benefits?: boolean; // Flag per beneficiari GOL/PNRR
 }
 
 // Responsabile (Supervisore, Resp. Certificazione)

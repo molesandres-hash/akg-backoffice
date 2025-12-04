@@ -8,7 +8,11 @@ export type SystemTemplateType =
   | 'calendario_condizionalita' // Modulo 5 - GOL/PNRR
   | 'verbale_ammissione'      // Verbale ammissione esame
   | 'registro_presenza'       // Registro presenze cartaceo
-  | 'verbale_finale';         // Verbale finale/scrutinio
+  | 'verbale_finale'          // Verbale finale/scrutinio
+  | 'comunicazione_evento'    // Modulo 7 - per beneficiario per lezione
+  | 'registro_giornaliero'    // Modulo 8 - per sessione presenza
+  | 'registro_didattico'      // Registro didattico del corso
+  | 'verbale_scrutinio';      // Verbale scrutinio finale
 
 // Interfaces
 export interface UserTemplate {
