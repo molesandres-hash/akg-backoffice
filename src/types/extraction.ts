@@ -356,6 +356,17 @@ export interface PlaceholderMap {
     ARGOMENTO: string;
     MODULO: string;
   }>;
+  
+  // Placeholder numerati per partecipanti (dinamici, generati da 1 a N)
+  // Es: PARTECIPANTE_1_NOME, PARTECIPANTE_1_COGNOME, PARTECIPANTE_2_COMPLETO, etc.
+  [key: `PARTECIPANTE_${number}`]: string;
+  [key: `PARTECIPANTE_${number}_NOME`]: string;
+  [key: `PARTECIPANTE_${number}_COGNOME`]: string;
+  [key: `PARTECIPANTE_${number}_COMPLETO`]: string;
+  [key: `PARTECIPANTE_${number}_CF`]: string;
+  [key: `PARTECIPANTE_${number}_CODICE_FISCALE`]: string;
+  [key: `PARTECIPANTE_${number}_EMAIL`]: string;
+  [key: `PARTECIPANTE_${number}_TELEFONO`]: string;
 }
 
 // Helper to create empty structures
