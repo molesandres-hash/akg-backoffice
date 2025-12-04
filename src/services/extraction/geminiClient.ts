@@ -16,7 +16,7 @@ import {
 } from './extractionSteps';
 
 const API_KEY_STORAGE_KEY = 'gemini_api_key';
-const MODEL_NAME = 'gemini-2.5-flash-preview-05-20';
+const MODEL_NAME = 'gemini-2.5-flash';
 
 export interface RawExtractionResult {
   corso?: {
