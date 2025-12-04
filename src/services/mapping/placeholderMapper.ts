@@ -48,7 +48,34 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     SESSIONI_PRESENZA: presenzaSessions.map((s, i) => ({ numero: s.numero || i + 1, data: s.data_completa || '', giorno: s.giorno || '', mese: s.mese || '', anno: s.anno || '', ora_inizio: s.ora_inizio || '', ora_fine: s.ora_fine || '', durata: s.durata || calculateDuration(s.ora_inizio, s.ora_fine).toString(), sede: s.sede || data.sede.indirizzo || '' })),
     MODULI: data.moduli.map((m, i) => ({ INDEX: i + 1, NUMERO: i + 1, TITOLO: m.titolo || '', ID: m.id || '', ID_SEZIONE: m.id_sezione || '', DATA_INIZIO: m.data_inizio || '', DATA_FINE: m.data_fine || '', ORE: m.ore_totali || '', TIPO_SEDE: m.tipo_sede || '' })),
     LISTA_ARGOMENTI: data.moduli.flatMap(m => m.argomenti.map(arg => ({ argomento: arg, modulo: m.titolo, ARGOMENTO: arg, MODULO: m.titolo }))),
+    // Placeholder numerati per partecipanti (basati sull'ordine dell'array)
+    ...generateNumberedParticipantPlaceholders(data.partecipanti),
   };
+}
+
+/**
+ * Genera placeholder numerati per ogni partecipante basandosi sull'ordine dell'array
+ * L'indice 0 dell'array corrisponde a PARTECIPANTE_1, indice 1 a PARTECIPANTE_2, etc.
+ * Questo ordine riflette il drag & drop nell'interfaccia utente
+ */
+function generateNumberedParticipantPlaceholders(partecipanti: CourseData['partecipanti']): Record<string, string> {
+  const placeholders: Record<string, string> = {};
+  
+  partecipanti.forEach((p, index) => {
+    const num = index + 1; // Indice 0 → Partecipante 1
+    const nomeCompleto = [p.nome, p.cognome].filter(Boolean).join(' ');
+    
+    placeholders[`PARTECIPANTE_${num}`] = nomeCompleto;
+    placeholders[`PARTECIPANTE_${num}_NOME`] = p.nome || '';
+    placeholders[`PARTECIPANTE_${num}_COGNOME`] = p.cognome || '';
+    placeholders[`PARTECIPANTE_${num}_COMPLETO`] = nomeCompleto;
+    placeholders[`PARTECIPANTE_${num}_CF`] = p.codiceFiscale || '';
+    placeholders[`PARTECIPANTE_${num}_CODICE_FISCALE`] = p.codiceFiscale || '';
+    placeholders[`PARTECIPANTE_${num}_EMAIL`] = p.email || '';
+    placeholders[`PARTECIPANTE_${num}_TELEFONO`] = p.telefono || '';
+  });
+  
+  return placeholders;
 }
 
 function formatItalianDate(date: Date): string { return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`; }
