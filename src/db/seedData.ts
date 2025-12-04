@@ -70,11 +70,34 @@ export async function seedDefaultData() {
 // Verifica e seed al primo avvio
 export async function initializeDefaultData() {
   try {
-    const entiCount = await db.enti.count();
-    if (entiCount === 0) {
+    // Controlla tutte le tabelle principali - se una è vuota, inizializza tutto
+    const [entiCount, sediCount, offerteCount, docentiCount] = await Promise.all([
+      db.enti.count(),
+      db.sedi.count(),
+      db.offerteFormative.count(),
+      db.docenti.count()
+    ]);
+    
+    console.log('📊 [Seed] Conteggi DB:', { entiCount, sediCount, offerteCount, docentiCount });
+    
+    // Se almeno una tabella critica è vuota, pulisci e ri-inizializza tutto
+    if (entiCount === 0 || sediCount === 0 || offerteCount === 0) {
+      console.log('🔄 [Seed] Tabelle vuote rilevate, inizializzazione dati predefiniti...');
+      // Pulisci prima per evitare duplicati
+      await Promise.all([
+        db.enti.clear(),
+        db.sedi.clear(),
+        db.offerteFormative.clear(),
+        db.responsabiliCertificazione.clear(),
+        db.supervisori.clear(),
+        db.piattaforme.clear(),
+        db.docenti.clear()
+      ]);
       await seedDefaultData();
+    } else {
+      console.log('✅ [Seed] Dati predefiniti già presenti');
     }
   } catch (error) {
-    console.error('Errore durante inizializzazione dati predefiniti:', error);
+    console.error('❌ [Seed] Errore durante inizializzazione:', error);
   }
 }
