@@ -2,6 +2,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { GeneralSettingsForm } from '@/components/admin/GeneralSettingsForm';
 import { DocentiManager } from '@/components/admin/DocentiManager';
 import { SupervisoriManager } from '@/components/admin/SupervisoriManager';
+import { ResponsabiliCertificazioneManager } from '@/components/admin/ResponsabiliCertificazioneManager';
 import { EntiSediManager } from '@/components/admin/EntiSediManager';
 import { PiattaformeFadManager } from '@/components/admin/PiattaformeFadManager';
 import { ListeArgomentiManager } from '@/components/admin/ListeArgomentiManager';
@@ -63,6 +64,7 @@ const Settings = () => {
           <TabsContent value="personale" className="space-y-6">
             <DocentiManager />
             <SupervisoriManager />
+            <ResponsabiliCertificazioneManager />
           </TabsContent>
 
           <TabsContent value="organizzazione" className="space-y-6">
