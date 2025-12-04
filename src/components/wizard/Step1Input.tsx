@@ -3,7 +3,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, FileText, AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { Sparkles, Loader2, FileText, AlertCircle, CheckCircle, AlertTriangle, Info, Target, Users } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
 import { toast } from 'sonner';
 import { extractionService, type ExtractionMode, type ExtractionResponse } from '@/services/extraction';
@@ -12,8 +12,12 @@ import { useState } from 'react';
 
 export function Step1Input() {
   const { 
-    rawInput, 
-    setRawInput, 
+    inputCorso,
+    inputModuli,
+    inputPartecipanti,
+    setInputCorso,
+    setInputModuli,
+    setInputPartecipanti,
     setExtractionResult, 
     nextStep, 
     isExtracting, 
@@ -25,8 +29,9 @@ export function Step1Input() {
   const [extractionResponse, setExtractionResponse] = useState<ExtractionResponse | null>(null);
 
   const handleExtract = async () => {
-    if (!rawInput.trim()) {
-      toast.error('Inserisci del testo da analizzare');
+    // Almeno uno dei campi deve essere compilato
+    if (!inputCorso.trim() && !inputModuli.trim() && !inputPartecipanti.trim()) {
+      toast.error('Inserisci del testo in almeno un blocco');
       return;
     }
 
@@ -50,8 +55,14 @@ export function Step1Input() {
         localStorage.setItem('gemini_api_key', settings.geminiApiKey);
       }
 
-      // Perform extraction
-      const response = await extractionService.extract(rawInput, mode);
+      // Perform extraction with structured input
+      const structuredInput = {
+        corso: inputCorso,
+        moduli: inputModuli,
+        partecipanti: inputPartecipanti
+      };
+      
+      const response = await extractionService.extract(structuredInput, mode);
       setExtractionResponse(response);
       setExtractionResult(response.result);
 
@@ -106,6 +117,8 @@ export function Step1Input() {
     }
   };
 
+  const hasInput = inputCorso.trim() || inputModuli.trim() || inputPartecipanti.trim();
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="text-center mb-8">
@@ -113,75 +126,133 @@ export function Step1Input() {
           Inserisci i Dati Grezzi
         </h2>
         <p className="text-muted-foreground">
-          Incolla testo da email, PDF, Excel o qualsiasi fonte contenente le informazioni del corso
+          Incolla i dati in 3 blocchi separati per una maggiore precisione nell'estrazione
         </p>
       </div>
 
+      {/* Blocco 1: Dati Corso Principale */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="w-5 h-5 text-accent" />
-            Dati di Input
-            {getConfidenceBadge()}
+            Blocco 1: Dati Corso Principale
           </CardTitle>
           <CardDescription>
-            L'AI analizzerà il testo per estrarre automaticamente: partecipanti, date, orari e dettagli del corso
+            Informazioni generali dal gestionale (titolo, date, stato).
+            <span className="text-yellow-600 ml-1">⚠️ L'ID in questa sezione potrebbe NON essere quello corretto.</span>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <Textarea
-            placeholder="Incolla qui il testo contenente le informazioni del corso...&#10;&#10;Esempio:&#10;Corso: Formazione Sicurezza&#10;Data: 15-16 Gennaio 2024&#10;Partecipanti: Mario Rossi, Anna Bianchi..."
-            value={rawInput}
-            onChange={(e) => setRawInput(e.target.value)}
-            className="min-h-[300px] font-mono text-sm resize-none"
+            placeholder="Incolla qui i dati generali del corso...&#10;&#10;Esempio:&#10;Corso: Formazione Sicurezza&#10;Data: 15-16 Gennaio 2024&#10;Stato: Aperto"
+            value={inputCorso}
+            onChange={(e) => setInputCorso(e.target.value)}
+            className="min-h-[150px] font-mono text-sm resize-none"
             disabled={isExtracting}
           />
-
-          {extractionError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Errore</AlertTitle>
-              <AlertDescription>{extractionError}</AlertDescription>
-            </Alert>
-          )}
-
-          {extractionResponse?.warnings && extractionResponse.warnings.length > 0 && (
-            <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-600">Discrepanze Rilevate</AlertTitle>
-              <AlertDescription>
-                <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                  {extractionResponse.warnings.map((warning, idx) => (
-                    <li key={idx}>{warning}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex justify-end">
-            <Button
-              onClick={handleExtract}
-              disabled={!rawInput.trim() || isExtracting}
-              size="lg"
-              className="gap-2"
-            >
-              {isExtracting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Analizzando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Estrai con AI
-                </>
-              )}
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
+      {/* Blocco 2: Dati Moduli - CRITICO */}
+      <Card className="glass-card border-primary/50 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Target className="w-5 h-5 text-primary" />
+            Blocco 2: Dati Moduli
+            <Badge variant="destructive" className="ml-2">CRITICO</Badge>
+          </CardTitle>
+          <CardDescription>
+            <strong className="text-primary">Tabella dei moduli con ID Corso e ID Sezione CORRETTI.</strong>
+            <br />
+            Questa è la fonte di verità per gli ID! L'AI darà priorità assoluta a questi dati.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="Incolla qui la tabella dei moduli...&#10;&#10;Esempio:&#10;ID Corso: 47816&#10;ID Sezione: 144176&#10;Modulo: Sicurezza Base&#10;Ore: 8"
+            value={inputModuli}
+            onChange={(e) => setInputModuli(e.target.value)}
+            className="min-h-[150px] font-mono text-sm resize-none border-primary/30"
+            disabled={isExtracting}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Blocco 3: Elenco Partecipanti */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Users className="w-5 h-5 text-accent" />
+            Blocco 3: Elenco Partecipanti
+          </CardTitle>
+          <CardDescription>
+            Lista completa dei partecipanti con dati anagrafici (nome, cognome, CF, email, ecc.)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="Incolla qui l'elenco dei partecipanti...&#10;&#10;Esempio:&#10;Mario Rossi - RSSMRA80A01H501Z&#10;Anna Bianchi - BNCNNA85B41F205X"
+            value={inputPartecipanti}
+            onChange={(e) => setInputPartecipanti(e.target.value)}
+            className="min-h-[150px] font-mono text-sm resize-none"
+            disabled={isExtracting}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Errori e Warning */}
+      {extractionError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Errore</AlertTitle>
+          <AlertDescription>{extractionError}</AlertDescription>
+        </Alert>
+      )}
+
+      {extractionResponse?.warnings && extractionResponse.warnings.length > 0 && (
+        <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertTitle className="text-yellow-600">Discrepanze Rilevate</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+              {extractionResponse.warnings.map((warning, idx) => (
+                <li key={idx}>{warning}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Confidence Badge */}
+      {getConfidenceBadge() && (
+        <div className="flex justify-center">
+          {getConfidenceBadge()}
+        </div>
+      )}
+
+      {/* Pulsante Estrai */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleExtract}
+          disabled={!hasInput || isExtracting}
+          size="lg"
+          className="gap-2"
+        >
+          {isExtracting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Analizzando...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Estrai con AI
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Info box */}
       <Alert variant="default" className="border-accent/30 bg-accent/5">
         <Info className="h-4 w-4 text-accent" />
         <AlertDescription className="text-sm">
@@ -190,6 +261,7 @@ export function Step1Input() {
         </AlertDescription>
       </Alert>
 
+      {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <InfoCard
           title="Step 1"

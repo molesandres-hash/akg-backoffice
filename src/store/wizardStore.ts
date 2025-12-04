@@ -24,8 +24,11 @@ interface WizardState {
   // Navigation
   currentStep: number;
   
-  // Data
-  rawInput: string;
+  // Data - 3 blocchi separati per estrazione
+  inputCorso: string;        // Blocco 1: Dati Corso Principale
+  inputModuli: string;       // Blocco 2: Dati Moduli (CRITICO per ID)
+  inputPartecipanti: string; // Blocco 3: Elenco Partecipanti
+  
   extractionResult: ExtractionResult | null;
   courseData: CourseData;
   selectedTemplateIds: number[];
@@ -45,8 +48,10 @@ interface WizardState {
   nextStep: () => void;
   prevStep: () => void;
   
-  // Data actions
-  setRawInput: (input: string) => void;
+  // Data actions - 3 input separati
+  setInputCorso: (input: string) => void;
+  setInputModuli: (input: string) => void;
+  setInputPartecipanti: (input: string) => void;
   setExtractionResult: (result: ExtractionResult) => void;
   setCourseData: (data: Partial<CourseData>) => void;
   
@@ -101,7 +106,9 @@ export const useWizardStore = create<WizardState>()(
     (set, get) => ({
       // Initial state
       currentStep: 0,
-      rawInput: '',
+      inputCorso: '',
+      inputModuli: '',
+      inputPartecipanti: '',
       extractionResult: null,
       courseData: initialCourseData,
       selectedTemplateIds: [],
@@ -126,8 +133,10 @@ export const useWizardStore = create<WizardState>()(
       nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 3) })),
       prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 0) })),
       
-      // Data actions
-      setRawInput: (input) => set({ rawInput: input }),
+      // Data actions - 3 input separati
+      setInputCorso: (input) => set({ inputCorso: input }),
+      setInputModuli: (input) => set({ inputModuli: input }),
+      setInputPartecipanti: (input) => set({ inputPartecipanti: input }),
       
       setExtractionResult: (result) => {
         const courseData = mapExtractionToCourseData(result);
@@ -336,7 +345,9 @@ export const useWizardStore = create<WizardState>()(
       // Reset
       reset: () => set({
         currentStep: 0,
-        rawInput: '',
+        inputCorso: '',
+        inputModuli: '',
+        inputPartecipanti: '',
         extractionResult: null,
         courseData: createEmptyCourseData(),
         selectedTemplateIds: [],
@@ -349,7 +360,9 @@ export const useWizardStore = create<WizardState>()(
     {
       name: 'magic-form-wizard',
       partialize: (state) => ({
-        rawInput: state.rawInput,
+        inputCorso: state.inputCorso,
+        inputModuli: state.inputModuli,
+        inputPartecipanti: state.inputPartecipanti,
         courseData: state.courseData,
         selectedTemplateIds: state.selectedTemplateIds,
         selectedModuleIndices: state.selectedModuleIndices,
