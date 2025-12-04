@@ -28,7 +28,6 @@ export function PersonaleForm() {
   const [supervisoriList, setSupervisoriList] = useState<DefaultSupervisore[]>([]);
   const [responsabiliList, setResponsabiliList] = useState<DefaultResponsabileCertificazione[]>([]);
 
-  // Carica dati predefiniti
   useEffect(() => {
     getAllDocenti().then(setDocentiList);
     getAllSupervisori().then(setSupervisoriList);
@@ -37,7 +36,6 @@ export function PersonaleForm() {
 
   const handleDocenteSelect = (value: string) => {
     if (value === 'manual') return;
-    
     const docente = docentiList.find(d => d.id === Number(value));
     if (docente) {
       updateTrainer({
@@ -53,7 +51,6 @@ export function PersonaleForm() {
 
   const handleSupervisoreSelect = (value: string) => {
     if (value === 'manual') return;
-    
     const sup = supervisoriList.find(s => s.id === Number(value));
     if (sup) {
       updateSupervisore({
@@ -65,12 +62,15 @@ export function PersonaleForm() {
 
   const handleResponsabileSelect = (value: string) => {
     if (value === 'manual') return;
-    
     const resp = responsabiliList.find(r => r.id === Number(value));
     if (resp) {
       updateResponsabileCertificazione({
         nome_completo: `${resp.nome} ${resp.cognome}`,
-        qualifica: 'Responsabile Certificazione'
+        qualifica: 'Responsabile Certificazione',
+        data_nascita: resp.dataNascita,
+        luogo_nascita: resp.luogoNascita,
+        residenza: resp.residenza,
+        documento: resp.documento
       });
     }
   };
@@ -85,7 +85,6 @@ export function PersonaleForm() {
             <CardTitle className="text-base">Docente</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Dropdown selezione docente */}
             {docentiList.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Seleziona Docente Predefinito</Label>
@@ -232,8 +231,8 @@ export function PersonaleForm() {
         </Card>
       </div>
 
-      {/* Seconda riga: Direttore, Supervisore, Resp. Certificazione */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Seconda riga: Direttore, Supervisore */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Direttore */}
         <Card>
           <CardHeader>
@@ -249,7 +248,6 @@ export function PersonaleForm() {
                 placeholder="Nome e Cognome"
               />
             </div>
-            
             <div className="space-y-1.5">
               <Label className="text-xs">Qualifica</Label>
               <Input
@@ -268,7 +266,6 @@ export function PersonaleForm() {
             <CardTitle className="text-base">Supervisore</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Dropdown selezione supervisore */}
             {supervisoriList.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Seleziona Predefinito</Label>
@@ -297,7 +294,6 @@ export function PersonaleForm() {
                 placeholder="Nome e Cognome"
               />
             </div>
-            
             <div className="space-y-1.5">
               <Label className="text-xs">Qualifica</Label>
               <Input
@@ -309,33 +305,34 @@ export function PersonaleForm() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Responsabile Certificazione */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Resp. Certificazione</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {/* Dropdown selezione responsabile */}
-            {responsabiliList.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Seleziona Predefinito</Label>
-                <Select onValueChange={handleResponsabileSelect}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Seleziona..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">-- Inserisci manualmente --</SelectItem>
-                    {responsabiliList.map(r => (
-                      <SelectItem key={r.id} value={String(r.id)}>
-                        {r.nome} {r.cognome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+      {/* Terza riga: Responsabile Certificazione (card più larga) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Responsabile Certificazione</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {responsabiliList.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Seleziona Predefinito</Label>
+              <Select onValueChange={handleResponsabileSelect}>
+                <SelectTrigger className="h-9 max-w-md">
+                  <SelectValue placeholder="Seleziona responsabile..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">-- Inserisci manualmente --</SelectItem>
+                  {responsabiliList.map(r => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nome} {r.cognome} - {r.documento}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs">Nome Completo</Label>
               <Input
@@ -345,19 +342,54 @@ export function PersonaleForm() {
                 placeholder="Nome e Cognome"
               />
             </div>
-            
             <div className="space-y-1.5">
               <Label className="text-xs">Qualifica</Label>
               <Input
                 value={responsabile_certificazione?.qualifica || ''}
                 onChange={(e) => updateResponsabileCertificazione({ qualifica: e.target.value })}
                 className="h-9"
-                placeholder="Es: Responsabile"
+                placeholder="Responsabile Certificazione"
               />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data di Nascita</Label>
+              <Input
+                value={responsabile_certificazione?.data_nascita || ''}
+                onChange={(e) => updateResponsabileCertificazione({ data_nascita: e.target.value })}
+                className="h-9"
+                placeholder="DD/MM/YYYY"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Luogo di Nascita</Label>
+              <Input
+                value={responsabile_certificazione?.luogo_nascita || ''}
+                onChange={(e) => updateResponsabileCertificazione({ luogo_nascita: e.target.value })}
+                className="h-9"
+                placeholder="Es: Milano (MI)"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Residenza</Label>
+              <Input
+                value={responsabile_certificazione?.residenza || ''}
+                onChange={(e) => updateResponsabileCertificazione({ residenza: e.target.value })}
+                className="h-9"
+                placeholder="Indirizzo completo"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Documento</Label>
+              <Input
+                value={responsabile_certificazione?.documento || ''}
+                onChange={(e) => updateResponsabileCertificazione({ documento: e.target.value.toUpperCase() })}
+                className="h-9 font-mono"
+                placeholder="N° Documento"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
