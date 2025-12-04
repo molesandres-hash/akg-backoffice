@@ -27,6 +27,8 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     DIRETTORE_CORSO: data.direttore.nome_completo || '', DIRETTORE_NOME_COMPLETO: data.direttore.nome_completo || '', DIRETTORE_QUALIFICA: data.direttore.qualifica || '',
     SUPERVISORE_NOME_COMPLETO: data.supervisore?.nome_completo || '', SUPERVISORE_QUALIFICA: data.supervisore?.qualifica || '',
     RESP_CERT_NOME_COMPLETO: data.responsabile_certificazione?.nome_completo || '', RESP_CERT_QUALIFICA: data.responsabile_certificazione?.qualifica || '',
+    RESP_CERT_DATA_NASCITA: data.responsabile_certificazione?.data_nascita || '', RESP_CERT_LUOGO_NASCITA: data.responsabile_certificazione?.luogo_nascita || '',
+    RESP_CERT_RESIDENZA: data.responsabile_certificazione?.residenza || '', RESP_CERT_DOCUMENTO: data.responsabile_certificazione?.documento || '',
     PIATTAFORMA: data.fad_settings.piattaforma || '', MODALITA_GESTIONE: data.fad_settings.modalita_gestione || '', MODALITA_VALUTAZIONE: data.fad_settings.modalita_valutazione || '',
     OBIETTIVI_DIDATTICI: data.fad_settings.obiettivi_didattici || '', ZOOM_MEETING_ID: data.fad_settings.zoom_meeting_id || '', ZOOM_PASSCODE: data.fad_settings.zoom_passcode || '',
     ZOOM_LINK: data.fad_settings.zoom_link || '', ID_RIUNIONE: data.fad_settings.zoom_meeting_id || '', PASSCODE: data.fad_settings.zoom_passcode || '', 

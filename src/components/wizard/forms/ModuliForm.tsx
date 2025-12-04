@@ -1,12 +1,16 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Layers } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Trash2, Layers, ListChecks, Wand2 } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
 import { SessioniTable } from './SessioniTable';
+import { getAllListeArgomenti, type ListaArgomenti } from '@/db/templateDb';
+import { toast } from 'sonner';
 
 export function ModuliForm() {
   const { 
@@ -14,12 +18,57 @@ export function ModuliForm() {
     addModulo, 
     updateModulo, 
     removeModulo,
+    updateSessione,
     isSingleModule 
   } = useWizardStore();
   const { moduli } = courseData;
 
+  const [listeArgomenti, setListeArgomenti] = useState<ListaArgomenti[]>([]);
+
+  useEffect(() => {
+    getAllListeArgomenti().then(setListeArgomenti);
+  }, []);
+
   const handleAddModulo = () => {
     addModulo();
+  };
+
+  // Seleziona lista argomenti e distribuisci alle sessioni
+  const handleSelectListaArgomenti = (listaId: string, moduloIndex: number) => {
+    const lista = listeArgomenti.find(l => l.id === Number(listaId));
+    if (!lista) return;
+
+    const modulo = moduli[moduloIndex];
+    
+    // Aggiorna gli argomenti del modulo
+    updateModulo(moduloIndex, { argomenti: lista.argomenti });
+
+    // Distribuisci automaticamente alle sessioni (un argomento per sessione)
+    modulo.sessioni.forEach((sessione, sessioneIndex) => {
+      const argomento = lista.argomenti[sessioneIndex] || '';
+      updateSessione(moduloIndex, sessioneIndex, { argomento });
+    });
+
+    const assigned = Math.min(lista.argomenti.length, modulo.sessioni.length);
+    toast.success(`Assegnati ${assigned} argomenti a ${modulo.sessioni.length} sessioni`);
+  };
+
+  // Ridistribuisci argomenti esistenti alle sessioni
+  const handleRedistributeArgomenti = (moduloIndex: number) => {
+    const modulo = moduli[moduloIndex];
+    
+    if (modulo.argomenti.length === 0) {
+      toast.error('Nessun argomento da distribuire');
+      return;
+    }
+
+    modulo.sessioni.forEach((sessione, sessioneIndex) => {
+      const argomento = modulo.argomenti[sessioneIndex] || '';
+      updateSessione(moduloIndex, sessioneIndex, { argomento });
+    });
+
+    const assigned = Math.min(modulo.argomenti.length, modulo.sessioni.length);
+    toast.success(`Ridistribuiti ${assigned} argomenti alle sessioni`);
   };
 
   return (
@@ -131,20 +180,54 @@ export function ModuliForm() {
                   </div>
                 </div>
 
-                {/* Argomenti */}
+                {/* Argomenti con selezione lista */}
                 <Card className="bg-muted/30">
                   <CardHeader className="py-3">
-                    <CardTitle className="text-sm">Argomenti ({modulo.argomenti.length})</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <ListChecks className="w-4 h-4" />
+                        Argomenti ({modulo.argomenti.length})
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {listeArgomenti.length > 0 && (
+                          <Select onValueChange={(value) => handleSelectListaArgomenti(value, index)}>
+                            <SelectTrigger className="w-[200px] h-8 text-xs">
+                              <SelectValue placeholder="Seleziona lista..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {listeArgomenti.map((lista) => (
+                                <SelectItem key={lista.id} value={String(lista.id)}>
+                                  {lista.nome} ({lista.argomenti.length})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {modulo.argomenti.length > 0 && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 gap-1 text-xs"
+                            onClick={() => handleRedistributeArgomenti(index)}
+                          >
+                            <Wand2 className="w-3 h-3" />
+                            Assegna a Sessioni
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="py-2">
                     <div className="flex flex-wrap gap-2">
                       {modulo.argomenti.map((arg, argIndex) => (
                         <Badge key={argIndex} variant="secondary" className="text-xs">
-                          {arg}
+                          {argIndex + 1}. {arg}
                         </Badge>
                       ))}
                       {modulo.argomenti.length === 0 && (
-                        <span className="text-xs text-muted-foreground">Nessun argomento</span>
+                        <span className="text-xs text-muted-foreground">
+                          Seleziona una lista argomenti dal dropdown sopra
+                        </span>
                       )}
                     </div>
                   </CardContent>

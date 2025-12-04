@@ -71,10 +71,20 @@ export interface Partecipante {
   benefits?: boolean; // Flag per beneficiari GOL/PNRR
 }
 
-// Responsabile (Supervisore, Resp. Certificazione)
+// Responsabile (Supervisore)
 export interface Responsabile {
   nome_completo: string;
   qualifica: string;
+}
+
+// Responsabile Certificazione con campi completi
+export interface ResponsabileCertificazione {
+  nome_completo: string;
+  qualifica: string;
+  data_nascita: string;
+  luogo_nascita: string;
+  residenza: string;
+  documento: string;
 }
 
 // Sessione (Session) - Detailed
@@ -143,7 +153,7 @@ export interface CourseData {
   tutor: Persona;
   direttore: Direttore;
   supervisore: Responsabile;
-  responsabile_certificazione: Responsabile;
+  responsabile_certificazione: ResponsabileCertificazione;
   partecipanti: Partecipante[];
   fad_settings: FadSettings;
   note?: string;
@@ -215,6 +225,10 @@ export interface PlaceholderMap {
   SUPERVISORE_QUALIFICA: string;
   RESP_CERT_NOME_COMPLETO: string;
   RESP_CERT_QUALIFICA: string;
+  RESP_CERT_DATA_NASCITA: string;
+  RESP_CERT_LUOGO_NASCITA: string;
+  RESP_CERT_RESIDENZA: string;
+  RESP_CERT_DOCUMENTO: string;
   
   // FAD Settings
   PIATTAFORMA: string;
@@ -451,6 +465,17 @@ export function createEmptyResponsabile(): Responsabile {
   };
 }
 
+export function createEmptyResponsabileCertificazione(): ResponsabileCertificazione {
+  return {
+    nome_completo: '',
+    qualifica: 'Responsabile Certificazione',
+    data_nascita: '',
+    luogo_nascita: '',
+    residenza: '',
+    documento: '',
+  };
+}
+
 export function createEmptyCourseData(): CourseData {
   return {
     corso: createEmptyCorso(),
@@ -461,7 +486,7 @@ export function createEmptyCourseData(): CourseData {
     tutor: createEmptyPersona(),
     direttore: { nome_completo: '', qualifica: '' },
     supervisore: createEmptyResponsabile(),
-    responsabile_certificazione: createEmptyResponsabile(),
+    responsabile_certificazione: createEmptyResponsabileCertificazione(),
     partecipanti: [],
     fad_settings: createEmptyFadSettings(),
     note: '',

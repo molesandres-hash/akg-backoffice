@@ -17,7 +17,9 @@ import {
   createEmptyCourseData, 
   createEmptyModulo, 
   createEmptySessione,
-  createEmptyResponsabile 
+  createEmptyResponsabile,
+  createEmptyResponsabileCertificazione,
+  type ResponsabileCertificazione
 } from '@/types/extraction';
 
 interface WizardState {
@@ -63,7 +65,10 @@ interface WizardState {
   updateTutor: (tutor: Partial<Persona>) => void;
   updateDirettore: (direttore: Partial<{ nome_completo: string; qualifica: string }>) => void;
   updateSupervisore: (supervisore: Partial<Responsabile>) => void;
-  updateResponsabileCertificazione: (responsabile: Partial<Responsabile>) => void;
+  updateResponsabileCertificazione: (responsabile: Partial<ResponsabileCertificazione>) => void;
+  
+  // Alias per updateSessioneInModulo
+  updateSessione: (moduloIndex: number, sessioneIndex: number, sessione: Partial<Sessione>) => void;
   updateFadSettings: (settings: Partial<FadSettings>) => void;
   setNote: (note: string) => void;
   
@@ -280,6 +285,23 @@ export const useWizardStore = create<WizardState>()(
         }
       })),
       
+      // Alias per updateSessioneInModulo
+      updateSessione: (moduloIndex, sessioneIndex, sessione) => set((state) => ({
+        courseData: {
+          ...state.courseData,
+          moduli: state.courseData.moduli.map((m, i) => 
+            i === moduloIndex 
+              ? {
+                  ...m,
+                  sessioni: m.sessioni.map((s, j) => 
+                    j === sessioneIndex ? { ...s, ...sessione } : s
+                  )
+                }
+              : m
+          )
+        }
+      })),
+      
       removeSessioneFromModulo: (moduloIndex, sessioneIndex) => set((state) => ({
         courseData: {
           ...state.courseData,
@@ -416,7 +438,7 @@ function mapExtractionToCourseData(result: ExtractionResult): CourseData {
       ...result.direttore,
     },
     supervisore: createEmptyResponsabile(),
-    responsabile_certificazione: createEmptyResponsabile(),
+    responsabile_certificazione: createEmptyResponsabileCertificazione(),
     partecipanti: result.partecipanti || [],
     fad_settings: {
       ...base.fad_settings,
