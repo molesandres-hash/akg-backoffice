@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { 
-  FileText, FileSpreadsheet, Award, Calendar, 
+import {
+  FileText, FileSpreadsheet, Award, Calendar,
   ClipboardCheck, ClipboardList, FileCheck,
   Upload, Download, Trash2, Check, AlertCircle, Loader2,
   MessageSquare, CalendarDays, BookOpen, FileSignature
@@ -8,15 +8,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  type SystemTemplateType, 
+import {
+  type SystemTemplateType,
   type SystemTemplate,
-  getSystemTemplate, 
-  setSystemTemplate, 
+  getSystemTemplate,
+  setSystemTemplate,
   deleteSystemTemplate,
   getAllSystemTemplates
 } from '@/db/templateDb';
 import { toast } from 'sonner';
+import { validateDocxTemplate } from '@/services/validation/templateValidator';
 
 interface TemplateSlotConfig {
   type: SystemTemplateType;
@@ -108,9 +109,9 @@ export function SystemTemplateSlots() {
       const allTemplates = await getAllSystemTemplates();
       console.log('📂 [SystemTemplateSlots] All system templates from DB:', allTemplates);
       console.log('📂 [SystemTemplateSlots] Templates count:', allTemplates.length);
-      
+
       const templateMap: Record<string, SystemTemplate | null> = {};
-      
+
       SYSTEM_TEMPLATE_SLOTS.forEach(slot => {
         const found = allTemplates.find(t => t.type === slot.type);
         templateMap[slot.type] = found || null;
@@ -120,7 +121,7 @@ export function SystemTemplateSlots() {
           console.log(`⚠️ [SystemTemplateSlots] No template for "${slot.type}"`);
         }
       });
-      
+
       setTemplates(templateMap as Record<SystemTemplateType, SystemTemplate | null>);
     } catch (error) {
       console.error('❌ [SystemTemplateSlots] Error loading system templates:', error);
@@ -134,6 +135,14 @@ export function SystemTemplateSlots() {
     setUploadingSlot(type);
     try {
       console.log(`📤 [SystemTemplateSlots] Uploading template for "${type}":`, file.name, 'Size:', file.size);
+
+      // Validate template structure
+      const validation = await validateDocxTemplate(file);
+      if (!validation.isValid) {
+        toast.error(`Errore nel file: ${validation.errors.join(' ')}`);
+        return;
+      }
+
       await setSystemTemplate(type, file, file.name);
       console.log(`✅ [SystemTemplateSlots] Template "${type}" saved successfully`);
       await loadTemplates();
@@ -209,7 +218,7 @@ export function SystemTemplateSlots() {
                   <div className="p-2 rounded-lg bg-accent/10">
                     <Icon className="w-5 h-5 text-accent" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-medium">{slot.label}</h3>
@@ -228,7 +237,7 @@ export function SystemTemplateSlots() {
                     <p className="text-sm text-muted-foreground mb-2">
                       {slot.description}
                     </p>
-                    
+
                     {template && (
                       <p className="text-xs text-muted-foreground truncate">
                         📄 {template.name}

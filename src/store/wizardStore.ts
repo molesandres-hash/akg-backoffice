@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { 
-  CourseData, 
-  Partecipante, 
-  Sessione, 
+import type {
+  CourseData,
+  Partecipante,
+  Sessione,
   Modulo,
   Corso,
   Ente,
@@ -13,9 +13,9 @@ import type {
   FadSettings,
   ExtractionResult
 } from '@/types/extraction';
-import { 
-  createEmptyCourseData, 
-  createEmptyModulo, 
+import {
+  createEmptyCourseData,
+  createEmptyModulo,
   createEmptySessione,
   createEmptyResponsabile,
   createEmptyResponsabileCertificazione,
@@ -25,38 +25,39 @@ import {
 interface WizardState {
   // Navigation
   currentStep: number;
-  
+
   // Data - 3 blocchi separati per estrazione
   inputCorso: string;        // Blocco 1: Dati Corso Principale
   inputModuli: string;       // Blocco 2: Dati Moduli (CRITICO per ID)
   inputPartecipanti: string; // Blocco 3: Elenco Partecipanti
-  
+
   extractionResult: ExtractionResult | null;
   courseData: CourseData;
   selectedTemplateIds: number[];
   selectedModuleIndices: number[];
-  
+
   // Status
   isExtracting: boolean;
   isGenerating: boolean;
   extractionError: string | null;
-  
+  signature: string | null;
+
   // Computed helpers
   isSingleModule: () => boolean;
   isFadCourse: () => boolean;
-  
+
   // Navigation actions
   setCurrentStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
-  
+
   // Data actions - 3 input separati
   setInputCorso: (input: string) => void;
   setInputModuli: (input: string) => void;
   setInputPartecipanti: (input: string) => void;
   setExtractionResult: (result: ExtractionResult) => void;
   setCourseData: (data: Partial<CourseData>) => void;
-  
+
   // Course updates
   updateCorso: (corso: Partial<Corso>) => void;
   updateEnte: (ente: Partial<Ente>) => void;
@@ -66,40 +67,41 @@ interface WizardState {
   updateDirettore: (direttore: Partial<{ nome_completo: string; qualifica: string }>) => void;
   updateSupervisore: (supervisore: Partial<Responsabile>) => void;
   updateResponsabileCertificazione: (responsabile: Partial<ResponsabileCertificazione>) => void;
-  
+
   // Alias per updateSessioneInModulo
   updateSessione: (moduloIndex: number, sessioneIndex: number, sessione: Partial<Sessione>) => void;
   updateFadSettings: (settings: Partial<FadSettings>) => void;
   setNote: (note: string) => void;
-  
+
   // Modulo actions
   addModulo: (modulo?: Modulo) => void;
   updateModulo: (index: number, modulo: Partial<Modulo>) => void;
   removeModulo: (index: number) => void;
-  
+
   // Sessione actions (within modulo)
   addSessioneToModulo: (moduloIndex: number, sessione?: Sessione) => void;
   updateSessioneInModulo: (moduloIndex: number, sessioneIndex: number, sessione: Partial<Sessione>) => void;
   removeSessioneFromModulo: (moduloIndex: number, sessioneIndex: number) => void;
-  
+
   // Partecipante actions
   addPartecipante: (partecipante?: Partecipante) => void;
   updatePartecipante: (index: number, partecipante: Partecipante) => void;
   removePartecipante: (index: number) => void;
-  
+
   // Template selection
   setSelectedTemplates: (ids: number[]) => void;
   toggleTemplateSelection: (id: number) => void;
-  
+
   // Module selection for generation
   setSelectedModuleIndices: (indices: number[]) => void;
   toggleModuleSelection: (index: number) => void;
-  
+
   // Status actions
   setIsExtracting: (value: boolean) => void;
   setIsGenerating: (value: boolean) => void;
   setExtractionError: (error: string | null) => void;
-  
+  setSignature: (signature: string | null) => void;
+
   // Reset
   reset: () => void;
 }
@@ -121,41 +123,42 @@ export const useWizardStore = create<WizardState>()(
       isExtracting: false,
       isGenerating: false,
       extractionError: null,
-      
+      signature: null,
+
       // Computed helpers
       isSingleModule: () => get().courseData.moduli.length <= 1,
       isFadCourse: () => {
         const { corso, moduli } = get().courseData;
         if (corso.tipo === 'FAD') return true;
-        return moduli.some(m => 
-          m.tipo_sede.toLowerCase().includes('online') || 
+        return moduli.some(m =>
+          m.tipo_sede.toLowerCase().includes('online') ||
           m.tipo_sede.toLowerCase().includes('fad')
         );
       },
-      
+
       // Navigation
       setCurrentStep: (step) => set({ currentStep: step }),
       nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 3) })),
       prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 0) })),
-      
+
       // Data actions - 3 input separati
       setInputCorso: (input) => set({ inputCorso: input }),
       setInputModuli: (input) => set({ inputModuli: input }),
       setInputPartecipanti: (input) => set({ inputPartecipanti: input }),
-      
+
       setExtractionResult: (result) => {
         const courseData = mapExtractionToCourseData(result);
-        set({ 
-          extractionResult: result, 
+        set({
+          extractionResult: result,
           courseData,
-          extractionError: null 
+          extractionError: null
         });
       },
-      
+
       setCourseData: (data) => set((state) => ({
         courseData: { ...state.courseData, ...data }
       })),
-      
+
       // Course updates
       updateCorso: (corso) => set((state) => ({
         courseData: {
@@ -163,76 +166,76 @@ export const useWizardStore = create<WizardState>()(
           corso: { ...state.courseData.corso, ...corso }
         }
       })),
-      
+
       updateEnte: (ente) => set((state) => ({
         courseData: {
           ...state.courseData,
-          ente: { 
-            ...state.courseData.ente, 
+          ente: {
+            ...state.courseData.ente,
             ...ente,
-            accreditato: ente.accreditato 
+            accreditato: ente.accreditato
               ? { ...state.courseData.ente.accreditato, ...ente.accreditato }
               : state.courseData.ente.accreditato
           }
         }
       })),
-      
+
       updateSede: (sede) => set((state) => ({
         courseData: {
           ...state.courseData,
           sede: { ...state.courseData.sede, ...sede }
         }
       })),
-      
+
       updateTrainer: (trainer) => set((state) => ({
         courseData: {
           ...state.courseData,
           trainer: { ...state.courseData.trainer, ...trainer }
         }
       })),
-      
+
       updateTutor: (tutor) => set((state) => ({
         courseData: {
           ...state.courseData,
           tutor: { ...state.courseData.tutor, ...tutor }
         }
       })),
-      
+
       updateDirettore: (direttore) => set((state) => ({
         courseData: {
           ...state.courseData,
           direttore: { ...state.courseData.direttore, ...direttore }
         }
       })),
-      
+
       updateSupervisore: (supervisore) => set((state) => ({
         courseData: {
           ...state.courseData,
           supervisore: { ...state.courseData.supervisore, ...supervisore }
         }
       })),
-      
+
       updateResponsabileCertificazione: (responsabile) => set((state) => ({
         courseData: {
           ...state.courseData,
           responsabile_certificazione: { ...state.courseData.responsabile_certificazione, ...responsabile }
         }
       })),
-      
+
       updateFadSettings: (settings) => set((state) => ({
         courseData: {
           ...state.courseData,
           fad_settings: { ...state.courseData.fad_settings, ...settings }
         }
       })),
-      
+
       setNote: (note) => set((state) => ({
         courseData: {
           ...state.courseData,
           note
         }
       })),
-      
+
       // Modulo actions
       addModulo: (modulo) => set((state) => ({
         courseData: {
@@ -240,79 +243,79 @@ export const useWizardStore = create<WizardState>()(
           moduli: [...state.courseData.moduli, modulo || createEmptyModulo()]
         }
       })),
-      
+
       updateModulo: (index, modulo) => set((state) => ({
         courseData: {
           ...state.courseData,
-          moduli: state.courseData.moduli.map((m, i) => 
+          moduli: state.courseData.moduli.map((m, i) =>
             i === index ? { ...m, ...modulo } : m
           )
         }
       })),
-      
+
       removeModulo: (index) => set((state) => ({
         courseData: {
           ...state.courseData,
           moduli: state.courseData.moduli.filter((_, i) => i !== index)
         }
       })),
-      
+
       // Sessione actions
       addSessioneToModulo: (moduloIndex, sessione) => set((state) => ({
         courseData: {
           ...state.courseData,
-          moduli: state.courseData.moduli.map((m, i) => 
-            i === moduloIndex 
+          moduli: state.courseData.moduli.map((m, i) =>
+            i === moduloIndex
               ? { ...m, sessioni: [...m.sessioni, sessione || createEmptySessione()] }
               : m
           )
         }
       })),
-      
+
       updateSessioneInModulo: (moduloIndex, sessioneIndex, sessione) => set((state) => ({
         courseData: {
           ...state.courseData,
-          moduli: state.courseData.moduli.map((m, i) => 
-            i === moduloIndex 
+          moduli: state.courseData.moduli.map((m, i) =>
+            i === moduloIndex
               ? {
-                  ...m,
-                  sessioni: m.sessioni.map((s, j) => 
-                    j === sessioneIndex ? { ...s, ...sessione } : s
-                  )
-                }
+                ...m,
+                sessioni: m.sessioni.map((s, j) =>
+                  j === sessioneIndex ? { ...s, ...sessione } : s
+                )
+              }
               : m
           )
         }
       })),
-      
+
       // Alias per updateSessioneInModulo
       updateSessione: (moduloIndex, sessioneIndex, sessione) => set((state) => ({
         courseData: {
           ...state.courseData,
-          moduli: state.courseData.moduli.map((m, i) => 
-            i === moduloIndex 
+          moduli: state.courseData.moduli.map((m, i) =>
+            i === moduloIndex
               ? {
-                  ...m,
-                  sessioni: m.sessioni.map((s, j) => 
-                    j === sessioneIndex ? { ...s, ...sessione } : s
-                  )
-                }
+                ...m,
+                sessioni: m.sessioni.map((s, j) =>
+                  j === sessioneIndex ? { ...s, ...sessione } : s
+                )
+              }
               : m
           )
         }
       })),
-      
+
       removeSessioneFromModulo: (moduloIndex, sessioneIndex) => set((state) => ({
         courseData: {
           ...state.courseData,
-          moduli: state.courseData.moduli.map((m, i) => 
-            i === moduloIndex 
+          moduli: state.courseData.moduli.map((m, i) =>
+            i === moduloIndex
               ? { ...m, sessioni: m.sessioni.filter((_, j) => j !== sessioneIndex) }
               : m
           )
         }
       })),
-      
+
       // Partecipante actions
       addPartecipante: (partecipante) => set((state) => ({
         courseData: {
@@ -323,26 +326,26 @@ export const useWizardStore = create<WizardState>()(
           ]
         }
       })),
-      
+
       updatePartecipante: (index, partecipante) => set((state) => ({
         courseData: {
           ...state.courseData,
-          partecipanti: state.courseData.partecipanti.map((p, i) => 
+          partecipanti: state.courseData.partecipanti.map((p, i) =>
             i === index ? partecipante : p
           )
         }
       })),
-      
+
       removePartecipante: (index) => set((state) => ({
         courseData: {
           ...state.courseData,
           partecipanti: state.courseData.partecipanti.filter((_, i) => i !== index)
         }
       })),
-      
+
       // Template selection
       setSelectedTemplates: (ids) => set({ selectedTemplateIds: ids }),
-      
+
       toggleTemplateSelection: (id) => set((state) => {
         const ids = state.selectedTemplateIds;
         if (ids.includes(id)) {
@@ -350,7 +353,7 @@ export const useWizardStore = create<WizardState>()(
         }
         return { selectedTemplateIds: [...ids, id] };
       }),
-      
+
       // Module selection
       setSelectedModuleIndices: (indices) => set({ selectedModuleIndices: indices }),
       toggleModuleSelection: (index) => set((state) => ({
@@ -358,12 +361,13 @@ export const useWizardStore = create<WizardState>()(
           ? state.selectedModuleIndices.filter(i => i !== index)
           : [...state.selectedModuleIndices, index]
       })),
-      
+
       // Status actions
       setIsExtracting: (value) => set({ isExtracting: value }),
       setIsGenerating: (value) => set({ isGenerating: value }),
       setExtractionError: (error) => set({ extractionError: error }),
-      
+      setSignature: (signature) => set({ signature }),
+
       // Reset
       reset: () => set({
         currentStep: 0,
@@ -377,6 +381,7 @@ export const useWizardStore = create<WizardState>()(
         isExtracting: false,
         isGenerating: false,
         extractionError: null,
+        signature: null,
       }),
     }),
     {
@@ -388,6 +393,7 @@ export const useWizardStore = create<WizardState>()(
         courseData: state.courseData,
         selectedTemplateIds: state.selectedTemplateIds,
         selectedModuleIndices: state.selectedModuleIndices,
+        signature: state.signature,
       }),
     }
   )
@@ -396,7 +402,7 @@ export const useWizardStore = create<WizardState>()(
 // Helper function to map extraction result to CourseData
 function mapExtractionToCourseData(result: ExtractionResult): CourseData {
   const base = createEmptyCourseData();
-  
+
   return {
     corso: {
       ...base.corso,

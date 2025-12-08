@@ -6,11 +6,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { 
-  ArrowLeft, 
-  Download, 
-  Loader2, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  Download,
+  Loader2,
+  CheckCircle2,
   AlertTriangle,
   ChevronDown,
   FileJson,
@@ -28,19 +28,22 @@ import { generateCourseZip, generateExcelOnlyZip, type ZipConfig } from '@/servi
 import { toast } from 'sonner';
 
 export function Step4Generate() {
-  const { 
-    courseData, 
-    selectedTemplateIds, 
-    prevStep, 
+  const {
+    courseData,
+    selectedTemplateIds,
+    prevStep,
     reset,
     isGenerating,
-    setIsGenerating 
+    setIsGenerating,
+    signature
   } = useWizardStore();
-  
+
   const [showPreview, setShowPreview] = useState(false);
   const [generationComplete, setGenerationComplete] = useState(false);
   const [exportMode, setExportMode] = useState<'docs' | 'zip' | 'excel'>('zip');
-  
+  const [useProgrammaticGeneration, setUseProgrammaticGeneration] = useState(false);
+  const [generateOnlyCustom, setGenerateOnlyCustom] = useState(false);
+
   // ZIP options
   const [includeExcel, setIncludeExcel] = useState(true);
   const [includeFadRegistries, setIncludeFadRegistries] = useState(true);
@@ -53,7 +56,7 @@ export function Step4Generate() {
 
   const placeholders = mapCourseDataToPlaceholders(courseData);
   const warnings = validatePlaceholders(placeholders);
-  
+
   const totalSessions = courseData.moduli.reduce((acc, m) => acc + m.sessioni.length, 0);
   const fadSessions = courseData.moduli.flatMap(m => m.sessioni.filter(s => s.is_fad));
   const presenzaSessions = courseData.moduli.flatMap(m => m.sessioni.filter(s => !s.is_fad));
@@ -62,10 +65,16 @@ export function Step4Generate() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    
+
+    // Inject signature into placeholders if available
+    const placeholdersWithSignature = {
+      ...placeholders,
+      FIRMA_DOCENTE: signature || ''
+    };
+
     try {
       if (exportMode === 'docs') {
-        await generateMultipleDocuments(selectedTemplateIds, placeholders);
+        await generateMultipleDocuments(selectedTemplateIds, placeholdersWithSignature);
       } else if (exportMode === 'excel') {
         await generateExcelOnlyZip(courseData);
       } else {
@@ -77,11 +86,13 @@ export function Step4Generate() {
           includeModulo7: includeModulo7 && beneficiari.length > 0,
           includeModulo8: includeModulo8 && presenzaSessions.length > 0,
           includeReadme,
-          includeMetadata
+          includeMetadata,
+          useProgrammaticGeneration,
+          onlyUserTemplates: generateOnlyCustom
         };
-        await generateCourseZip(courseData, selectedTemplateIds, config);
+        await generateCourseZip(courseData, selectedTemplateIds, config, signature);
       }
-      
+
       setGenerationComplete(true);
       toast.success('Documenti generati con successo!');
     } catch (error) {
@@ -203,11 +214,10 @@ export function Step4Generate() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               onClick={() => setExportMode('zip')}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
-                exportMode === 'zip' 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50'
-              }`}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${exportMode === 'zip'
+                ? 'border-primary bg-primary/10'
+                : 'border-border hover:border-primary/50'
+                }`}
             >
               <FileArchive className="w-6 h-6 mb-2" />
               <p className="font-medium">ZIP Completo</p>
@@ -216,11 +226,10 @@ export function Step4Generate() {
 
             <button
               onClick={() => setExportMode('docs')}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
-                exportMode === 'docs' 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50'
-              }`}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${exportMode === 'docs'
+                ? 'border-primary bg-primary/10'
+                : 'border-border hover:border-primary/50'
+                }`}
             >
               <FileText className="w-6 h-6 mb-2" />
               <p className="font-medium">Solo Word</p>
@@ -229,11 +238,10 @@ export function Step4Generate() {
 
             <button
               onClick={() => setExportMode('excel')}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
-                exportMode === 'excel' 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50'
-              }`}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${exportMode === 'excel'
+                ? 'border-primary bg-primary/10'
+                : 'border-border hover:border-primary/50'
+                }`}
             >
               <FileSpreadsheet className="w-6 h-6 mb-2" />
               <p className="font-medium">Solo Excel</p>
@@ -245,13 +253,13 @@ export function Step4Generate() {
           {exportMode === 'zip' && (
             <div className="pt-4 border-t space-y-4">
               <p className="text-sm font-medium">Opzioni ZIP</p>
-              
+
               {/* Base options */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="includeExcel" 
-                    checked={includeExcel} 
+                  <Checkbox
+                    id="includeExcel"
+                    checked={includeExcel}
                     onCheckedChange={(c) => setIncludeExcel(c === true)}
                   />
                   <Label htmlFor="includeExcel" className="text-sm">
@@ -260,8 +268,8 @@ export function Step4Generate() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="includeFad" 
+                  <Checkbox
+                    id="includeFad"
                     checked={includeFadRegistries}
                     disabled={fadSessions.length === 0}
                     onCheckedChange={(c) => setIncludeFadRegistries(c === true)}
@@ -272,8 +280,8 @@ export function Step4Generate() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="includeCerts" 
+                  <Checkbox
+                    id="includeCerts"
                     checked={includeCertificates}
                     onCheckedChange={(c) => setIncludeCertificates(c === true)}
                   />
@@ -292,8 +300,8 @@ export function Step4Generate() {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="includeModulo5" 
+                    <Checkbox
+                      id="includeModulo5"
                       checked={includeModulo5}
                       disabled={beneficiari.length === 0}
                       onCheckedChange={(c) => setIncludeModulo5(c === true)}
@@ -304,8 +312,8 @@ export function Step4Generate() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="includeModulo7" 
+                    <Checkbox
+                      id="includeModulo7"
                       checked={includeModulo7}
                       disabled={beneficiari.length === 0}
                       onCheckedChange={(c) => setIncludeModulo7(c === true)}
@@ -325,8 +333,8 @@ export function Step4Generate() {
                   Sessioni in presenza ({presenzaSessions.length})
                 </p>
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="includeModulo8" 
+                  <Checkbox
+                    id="includeModulo8"
                     checked={includeModulo8}
                     disabled={presenzaSessions.length === 0}
                     onCheckedChange={(c) => setIncludeModulo8(c === true)}
@@ -344,8 +352,8 @@ export function Step4Generate() {
                 <p className="text-sm font-medium text-muted-foreground mb-3">File opzionali</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="includeReadme" 
+                    <Checkbox
+                      id="includeReadme"
                       checked={includeReadme}
                       onCheckedChange={(c) => setIncludeReadme(c === true)}
                     />
@@ -355,8 +363,8 @@ export function Step4Generate() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="includeMetadata" 
+                    <Checkbox
+                      id="includeMetadata"
                       checked={includeMetadata}
                       onCheckedChange={(c) => setIncludeMetadata(c === true)}
                     />
@@ -364,6 +372,49 @@ export function Step4Generate() {
                       metadata.json (dati grezzi)
                     </Label>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Programmatic Generation Toggle */}
+          {exportMode === 'zip' && (
+            <div className="pt-4 border-t">
+              <div className="flex items-center space-x-2 bg-purple-50 p-3 rounded-lg border border-purple-200">
+                <Checkbox
+                  id="useProgrammatic"
+                  checked={useProgrammaticGeneration}
+                  onCheckedChange={(c) => setUseProgrammaticGeneration(c === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="useProgrammatic" className="text-sm font-medium text-purple-900 cursor-pointer">
+                    Usa Generazione Sperimentale (v2.0)
+                  </Label>
+                  <p className="text-xs text-purple-700">
+                    Usa il nuovo motore di generazione codice (più stabile per tabelle e loghi).
+                    Attualmente supporta: Modello A (Registro FAD).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* User Template Isolation Toggle (Test Mode) */}
+          {exportMode === 'zip' && (
+            <div className="pt-4 border-t">
+              <div className="flex items-center space-x-2 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <Checkbox
+                  id="generateOnlyCustom"
+                  checked={generateOnlyCustom}
+                  onCheckedChange={(c) => setGenerateOnlyCustom(c === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="generateOnlyCustom" className="text-sm font-medium text-blue-900 cursor-pointer">
+                    Genera solo i miei template personalizzati
+                  </Label>
+                  <p className="text-xs text-blue-700">
+                    Utile per testare i tuoi template senza generare quelli di sistema (ignora registri, verbali standard, etc.)
+                  </p>
                 </div>
               </div>
             </div>
@@ -397,15 +448,15 @@ export function Step4Generate() {
             <div>
               <p className="text-muted-foreground">Docente</p>
               <p className="font-medium">
-                {courseData.trainer.nome_completo || 
-                 [courseData.trainer.nome, courseData.trainer.cognome].filter(Boolean).join(' ') || '-'}
+                {courseData.trainer.nome_completo ||
+                  [courseData.trainer.nome, courseData.trainer.cognome].filter(Boolean).join(' ') || '-'}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Tutor</p>
               <p className="font-medium">
                 {courseData.tutor.nome_completo ||
-                 [courseData.tutor.nome, courseData.tutor.cognome].filter(Boolean).join(' ') || '-'}
+                  [courseData.tutor.nome, courseData.tutor.cognome].filter(Boolean).join(' ') || '-'}
               </p>
             </div>
           </div>
@@ -450,16 +501,20 @@ export function Step4Generate() {
           <ArrowLeft className="w-4 h-4" />
           Indietro
         </Button>
-        
+
         <div className="flex gap-3">
           {generationComplete && (
             <Button variant="outline" onClick={handleNewDocument}>
               Nuovo Documento
             </Button>
           )}
-          <Button 
-            onClick={handleGenerate} 
-            disabled={isGenerating || (exportMode !== 'excel' && selectedTemplateIds.length === 0)}
+          <Button
+            onClick={handleGenerate}
+            disabled={
+              isGenerating ||
+              (exportMode === 'docs' && selectedTemplateIds.length === 0) ||
+              (exportMode === 'zip' && generateOnlyCustom && selectedTemplateIds.length === 0)
+            }
             size="lg"
             className="gap-2"
           >
@@ -471,14 +526,23 @@ export function Step4Generate() {
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                {exportMode === 'zip' ? 'Genera ZIP' : 
-                 exportMode === 'excel' ? 'Genera Excel' : 
-                 `Genera ${selectedTemplateIds.length > 1 ? 'Documenti' : 'Documento'}`}
+                {exportMode === 'zip' ? 'Genera ZIP' :
+                  exportMode === 'excel' ? 'Genera Excel' :
+                    `Genera ${selectedTemplateIds.length > 1 ? 'Documenti' : 'Documento'}`}
               </>
             )}
           </Button>
         </div>
       </div>
+
+      {/* Warning for empty selection in Custom Only mode */}
+      {exportMode === 'zip' && generateOnlyCustom && selectedTemplateIds.length === 0 && (
+        <div className="mt-2 text-right">
+          <p className="text-xs text-destructive">
+            Seleziona almeno un template personalizzato nello step precedente o disabilita "Solo template personalizzati".
+          </p>
+        </div>
+      )}
     </div>
   );
 }

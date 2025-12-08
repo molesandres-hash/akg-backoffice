@@ -1,5 +1,13 @@
 import type { CourseData, PlaceholderMap } from '@/types/extraction';
 
+// Helper per generare email AKG default
+function generateAkgEmail(nome: string, cognome: string): string {
+  if (!nome || !cognome) return '';
+  const n = nome.trim().toLowerCase().replace(/[\s']/g, '.').replace(/[^a-z0-9.]/g, '');
+  const c = cognome.trim().toLowerCase().replace(/[\s']/g, '.').replace(/[^a-z0-9.]/g, '');
+  return `${n}.${c}@akgitalia.it`;
+}
+
 export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: number = 0): PlaceholderMap {
   const today = new Date();
   const currentModule = data.moduli[moduleIndex] || data.moduli[0];
@@ -11,7 +19,11 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
   const totalHoursCalculated = totalFadHours + totalPresenzaHours;
   const sedeAccreditataCompleta = [data.ente.accreditato.nome, [data.ente.accreditato.via, data.ente.accreditato.numero_civico].filter(Boolean).join(' '), data.ente.accreditato.comune].filter(Boolean).join(' - ');
   const verbaleLuogo = data.ente.accreditato.comune || data.sede.nome?.split(' ')[0] || '';
-  
+
+  // Email logic
+  const docenteEmail = data.trainer.email || generateAkgEmail(data.trainer.nome, data.trainer.cognome);
+  const tutorEmail = data.tutor.email || generateAkgEmail(data.tutor.nome, data.tutor.cognome); // Assuming data.tutor has email property (check type)
+
   // Calculated fields
   const numeroPagine = presenzaSessions.length;
   const dataVidimazione = presenzaSessions.length > 0 ? presenzaSessions[presenzaSessions.length - 1].data_completa : '';
@@ -24,8 +36,8 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     ENTE_NOME: data.ente.nome || '', ENTE_INDIRIZZO: data.ente.indirizzo || '', SEDE_ACCREDITATA: data.ente.accreditato.nome || '', SEDE_ACCREDITATA_COMPLETA: sedeAccreditataCompleta,
     SEDE_NOME: data.sede.nome || '', SEDE_INDIRIZZO: data.sede.indirizzo || '', SEDE_TIPO: data.sede.tipo || '', VERBALE_LUOGO: verbaleLuogo,
     NOME_DOCENTE: data.trainer.nome_completo || [data.trainer.nome, data.trainer.cognome].filter(Boolean).join(' '), DOCENTE_NOME: data.trainer.nome || '', DOCENTE_COGNOME: data.trainer.cognome || '',
-    DOCENTE_COMPLETO: data.trainer.nome_completo || [data.trainer.nome, data.trainer.cognome].filter(Boolean).join(' '), CODICE_FISCALE_DOCENTE: data.trainer.codice_fiscale || '', EMAIL_DOCENTE: data.trainer.email || '', TELEFONO_DOCENTE: data.trainer.telefono || '',
-    TUTOR_NOME: data.tutor.nome || '', TUTOR_COGNOME: data.tutor.cognome || '', TUTOR_COMPLETO: data.tutor.nome_completo || [data.tutor.nome, data.tutor.cognome].filter(Boolean).join(' '), TUTOR_CORSO: data.tutor.nome_completo || '',
+    DOCENTE_COMPLETO: data.trainer.nome_completo || [data.trainer.nome, data.trainer.cognome].filter(Boolean).join(' '), CODICE_FISCALE_DOCENTE: data.trainer.codice_fiscale || '', EMAIL_DOCENTE: docenteEmail, TELEFONO_DOCENTE: data.trainer.telefono || '',
+    TUTOR_NOME: data.tutor.nome || '', TUTOR_COGNOME: data.tutor.cognome || '', TUTOR_COMPLETO: data.tutor.nome_completo || [data.tutor.nome, data.tutor.cognome].filter(Boolean).join(' '), TUTOR_CORSO: data.tutor.nome_completo || '',// TUTOR_EMAIL missing in interface? Adding logic if needed but interface might not have it.
     DIRETTORE_CORSO: data.direttore.nome_completo || '', DIRETTORE_NOME_COMPLETO: data.direttore.nome_completo || '', DIRETTORE_QUALIFICA: data.direttore.qualifica || '',
     SUPERVISORE_NOME_COMPLETO: data.supervisore?.nome_completo || '', SUPERVISORE_QUALIFICA: data.supervisore?.qualifica || '',
     RESP_CERT_NOME_COMPLETO: data.responsabile_certificazione?.nome_completo || '', RESP_CERT_QUALIFICA: data.responsabile_certificazione?.qualifica || '',
@@ -33,7 +45,7 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     RESP_CERT_RESIDENZA: data.responsabile_certificazione?.residenza || '', RESP_CERT_DOCUMENTO: data.responsabile_certificazione?.documento || '',
     PIATTAFORMA: data.fad_settings.piattaforma || '', MODALITA_GESTIONE: data.fad_settings.modalita_gestione || '', MODALITA_VALUTAZIONE: data.fad_settings.modalita_valutazione || '',
     OBIETTIVI_DIDATTICI: data.fad_settings.obiettivi_didattici || '', ZOOM_MEETING_ID: data.fad_settings.zoom_meeting_id || '', ZOOM_PASSCODE: data.fad_settings.zoom_passcode || '',
-    ZOOM_LINK: data.fad_settings.zoom_link || '', ID_RIUNIONE: data.fad_settings.zoom_meeting_id || '', PASSCODE: data.fad_settings.zoom_passcode || '', 
+    ZOOM_LINK: data.fad_settings.zoom_link || '', ID_RIUNIONE: data.fad_settings.zoom_meeting_id || '', PASSCODE: data.fad_settings.zoom_passcode || '',
     ORE_FAD: totalFadHours.toString(), ORE_TOTALE_FAD: totalFadHours.toString(),
     ORE_PRESENZA: totalPresenzaHours.toString(), ORE_TOTALE_PRESENZA: totalPresenzaHours.toString(),
     ORE_TOTALI_CALCOLATE: totalHoursCalculated.toString(),
@@ -46,7 +58,18 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
     SESSIONI: allSessions.map((s, i) => ({ numero: s.numero || i + 1, data: s.data_completa || '', giorno: s.giorno || '', mese: s.mese || '', anno: s.anno || '', ora_inizio: s.ora_inizio || '', ora_fine: s.ora_fine || '', durata: s.durata || calculateDuration(s.ora_inizio, s.ora_fine).toString(), argomento: s.argomento || '', sede: s.sede || data.sede.nome || '', modalita: s.is_fad ? 'FAD' : (s.tipo_sede || 'Presenza') })),
     SESSIONI_FAD: fadSessions.map((s, i) => ({ numero: s.numero || i + 1, data: s.data_completa || '', giorno: s.giorno || '', mese: s.mese || '', anno: s.anno || '', ora_inizio: s.ora_inizio || '', ora_fine: s.ora_fine || '', durata: s.durata || calculateDuration(s.ora_inizio, s.ora_fine).toString(), PARTECIPANTI_SESSIONE: data.partecipanti.map((p, j) => ({ numero: j + 1, nome: p.nome || '', cognome: p.cognome || '', nome_completo: [p.nome, p.cognome].filter(Boolean).join(' '), codice_fiscale: p.codiceFiscale || '', ora_connessione: s.ora_inizio || '', ora_disconnessione: s.ora_fine || '' })) })),
     SESSIONI_PRESENZA: presenzaSessions.map((s, i) => ({ numero: s.numero || i + 1, data: s.data_completa || '', giorno: s.giorno || '', mese: s.mese || '', anno: s.anno || '', ora_inizio: s.ora_inizio || '', ora_fine: s.ora_fine || '', durata: s.durata || calculateDuration(s.ora_inizio, s.ora_fine).toString(), sede: s.sede || data.sede.indirizzo || '' })),
-    MODULI: data.moduli.map((m, i) => ({ INDEX: i + 1, NUMERO: i + 1, TITOLO: m.titolo || '', ID: m.id || '', ID_SEZIONE: m.id_sezione || '', DATA_INIZIO: m.data_inizio || '', DATA_FINE: m.data_fine || '', ORE: m.ore_totali || '', TIPO_SEDE: m.tipo_sede || '' })),
+    MODULI: data.moduli.map((m, i) => ({
+      INDEX: i + 1,
+      NUMERO: i + 1,
+      TITOLO: m.titolo || '',
+      ID: m.id || '',
+      ID_SEZIONE: m.id_sezione || '',
+      DATA_INIZIO: m.data_inizio || '',
+      DATA_FINE: m.data_fine || '',
+      ORE: m.ore_totali || '',
+      TIPO_SEDE: m.tipo_sede || '',
+      ARGOMENTI: m.argomenti.map(arg => ({ ARGOMENTO: arg }))
+    })),
     LISTA_ARGOMENTI: data.moduli.flatMap(m => m.argomenti.map(arg => ({ argomento: arg, modulo: m.titolo, ARGOMENTO: arg, MODULO: m.titolo }))),
     // Placeholder numerati per partecipanti (basati sull'ordine dell'array)
     ...generateNumberedParticipantPlaceholders(data.partecipanti),
@@ -60,11 +83,11 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
  */
 function generateNumberedParticipantPlaceholders(partecipanti: CourseData['partecipanti']): Record<string, string> {
   const placeholders: Record<string, string> = {};
-  
+
   partecipanti.forEach((p, index) => {
     const num = index + 1; // Indice 0 → Partecipante 1
     const nomeCompleto = [p.nome, p.cognome].filter(Boolean).join(' ');
-    
+
     placeholders[`PARTECIPANTE_${num}`] = nomeCompleto;
     placeholders[`PARTECIPANTE_${num}_NOME`] = p.nome || '';
     placeholders[`PARTECIPANTE_${num}_COGNOME`] = p.cognome || '';
@@ -74,7 +97,7 @@ function generateNumberedParticipantPlaceholders(partecipanti: CourseData['parte
     placeholders[`PARTECIPANTE_${num}_EMAIL`] = p.email || '';
     placeholders[`PARTECIPANTE_${num}_TELEFONO`] = p.telefono || '';
   });
-  
+
   return placeholders;
 }
 
@@ -89,26 +112,26 @@ const LUNCH_BREAK_END = 14;
  */
 export function calculateDurationWithLunchBreak(start: string, end: string): number {
   if (!start || !end) return 0;
-  
+
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
-  
+
   const startMinutes = sh * 60 + (sm || 0);
   const endMinutes = eh * 60 + (em || 0);
-  
+
   let totalMinutes = endMinutes - startMinutes;
-  
+
   // Verifica sovrapposizione con pausa pranzo (13:00-14:00)
   const lunchStartMinutes = LUNCH_BREAK_START * 60;
   const lunchEndMinutes = LUNCH_BREAK_END * 60;
-  
+
   if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
     const overlapStart = Math.max(startMinutes, lunchStartMinutes);
     const overlapEnd = Math.min(endMinutes, lunchEndMinutes);
     const overlapMinutes = Math.max(0, overlapEnd - overlapStart);
     totalMinutes -= overlapMinutes;
   }
-  
+
   return Math.max(0, Math.round(totalMinutes / 60));
 }
 

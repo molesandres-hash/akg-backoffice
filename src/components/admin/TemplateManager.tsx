@@ -3,22 +3,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Upload, 
-  Trash2, 
-  FileText, 
+import {
+  Upload,
+  Trash2,
+  FileText,
   Download,
   RefreshCcw,
   AlertCircle
 } from 'lucide-react';
-import { 
-  getAllTemplates, 
-  addTemplate, 
-  deleteTemplate, 
-  type UserTemplate 
+import {
+  getAllTemplates,
+  addTemplate,
+  deleteTemplate,
+  type UserTemplate
 } from '@/db/templateDb';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { validateDocxTemplate } from '@/services/validation/templateValidator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +69,13 @@ export function TemplateManager() {
     for (const file of Array.from(files)) {
       if (!file.name.endsWith('.docx')) {
         toast.error(`Il file ${file.name} non è un documento Word (.docx)`);
+        continue;
+      }
+
+      // Validate template structure
+      const validation = await validateDocxTemplate(file);
+      if (!validation.isValid) {
+        toast.error(`Errore nel file ${file.name}: ${validation.errors.join(' ')}`);
         continue;
       }
 
@@ -246,7 +254,7 @@ export function TemplateManager() {
                           <div>
                             <p className="font-medium">{template.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {template.isDefault ? 'Sistema' : 'Personalizzato'} • 
+                              {template.isDefault ? 'Sistema' : 'Personalizzato'} •
                               Caricato il {template.uploadDate.toLocaleDateString('it-IT')}
                             </p>
                           </div>

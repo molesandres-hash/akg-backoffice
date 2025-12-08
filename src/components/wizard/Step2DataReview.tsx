@@ -12,8 +12,10 @@ import { PersonaleForm } from './forms/PersonaleForm';
 import { PartecipantiTable } from './forms/PartecipantiTable';
 import { FadSettingsForm } from './forms/FadSettingsForm';
 
+import { SignatureInput } from '@/components/ui/SignatureInput';
+
 export function Step2DataReview() {
-  const { courseData, nextStep, prevStep, isSingleModule, isFadCourse } = useWizardStore();
+  const { courseData, nextStep, prevStep, isSingleModule, isFadCourse, signature, setSignature } = useWizardStore();
   const totalSessions = courseData.moduli.reduce((acc, m) => acc + m.sessioni.length, 0);
 
   return (
@@ -42,7 +44,12 @@ export function Step2DataReview() {
         <TabsContent value="corso" className="mt-6"><Card className="glass-card"><CardHeader><CardTitle className="text-lg">Informazioni Corso</CardTitle><CardDescription>Dati generali del corso</CardDescription></CardHeader><CardContent><CorsoForm /></CardContent></Card></TabsContent>
         <TabsContent value="moduli" className="mt-6"><Card className="glass-card"><CardHeader><CardTitle className="text-lg">Moduli e Sessioni</CardTitle><CardDescription>{isSingleModule() ? 'Corso a modulo singolo' : `${courseData.moduli.length} moduli`}</CardDescription></CardHeader><CardContent><ModuliForm /></CardContent></Card></TabsContent>
         <TabsContent value="ente" className="mt-6"><EnteSedeForm /></TabsContent>
-        <TabsContent value="personale" className="mt-6"><PersonaleForm /></TabsContent>
+        <TabsContent value="personale" className="mt-6">
+          <PersonaleForm />
+          <div className="mt-6">
+            <SignatureInput value={signature} onChange={setSignature} />
+          </div>
+        </TabsContent>
         <TabsContent value="partecipanti" className="mt-6"><Card className="glass-card"><CardHeader><CardTitle className="text-lg">Lista Partecipanti</CardTitle></CardHeader><CardContent><PartecipantiTable /></CardContent></Card></TabsContent>
         {isFadCourse() && <TabsContent value="fad" className="mt-6"><FadSettingsForm /></TabsContent>}
       </Tabs>
