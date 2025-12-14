@@ -58,6 +58,7 @@ export interface FadSettings {
   zoom_meeting_id: string;
   zoom_passcode: string;
   zoom_link: string;
+  includeSignature: boolean; // Flag per includere la firma nel Modello B
 }
 
 // Partecipante
@@ -187,23 +188,23 @@ export interface PlaceholderMap {
   TIPO_CORSO: string;
   CAPIENZA: string;
   STATO: string;
-  
+
   // Offerta Formativa
   CODICE_OFFERTA_FORMATIVA: string;
   NOME_OFFERTA_FORMATIVA: string;
-  
+
   // Ente
   ENTE_NOME: string;
   ENTE_INDIRIZZO: string;
   SEDE_ACCREDITATA: string;
   SEDE_ACCREDITATA_COMPLETA: string;
-  
+
   // Sede
   SEDE_NOME: string;
   SEDE_INDIRIZZO: string;
   SEDE_TIPO: string;
   VERBALE_LUOGO: string;
-  
+
   // Persone
   NOME_DOCENTE: string;
   DOCENTE_NOME: string;
@@ -212,12 +213,12 @@ export interface PlaceholderMap {
   CODICE_FISCALE_DOCENTE: string;
   EMAIL_DOCENTE: string;
   TELEFONO_DOCENTE: string;
-  
+
   TUTOR_NOME: string;
   TUTOR_COGNOME: string;
   TUTOR_COMPLETO: string;
   TUTOR_CORSO: string;
-  
+
   DIRETTORE_CORSO: string;
   DIRETTORE_NOME_COMPLETO: string;
   DIRETTORE_QUALIFICA: string;
@@ -229,7 +230,7 @@ export interface PlaceholderMap {
   RESP_CERT_LUOGO_NASCITA: string;
   RESP_CERT_RESIDENZA: string;
   RESP_CERT_DOCUMENTO: string;
-  
+
   // FAD Settings
   PIATTAFORMA: string;
   MODALITA_GESTIONE: string;
@@ -247,12 +248,12 @@ export interface PlaceholderMap {
   ORE_TOTALI_CALCOLATE: string;
   NUMERO_PAGINE: string;
   DATA_VIDIMAZIONE: string;
-  
+
   // Placeholder per registro giornaliero (per sessione)
   ARGOMENTO_GIORNO?: string;
   MATERIA_GIORNO?: string;
   CONTENUTI_GIORNO?: string;
-  
+
   // Modulo corrente (per documenti per-modulo)
   MODULO_TITOLO: string;
   MODULO_ID: string;
@@ -262,13 +263,13 @@ export interface PlaceholderMap {
   MODULO_DATA_FINE: string;
   MODULO_ORE: string;
   MODULO_TIPO_SEDE: string;
-  
+
   // Date
   DATA_OGGI: string;
   GIORNO: string;
   MESE: string;
   ANNO: string;
-  
+
   // Loop arrays
   STUDENTI: Array<{
     INDEX: number;
@@ -281,7 +282,7 @@ export interface PlaceholderMap {
     EMAIL: string;
     TELEFONO: string;
   }>;
-  
+
   PARTECIPANTI: Array<{
     numero: number;
     nome: string;
@@ -291,7 +292,7 @@ export interface PlaceholderMap {
     email: string;
     telefono: string;
   }>;
-  
+
   SESSIONI: Array<{
     numero: number;
     data: string;
@@ -305,7 +306,7 @@ export interface PlaceholderMap {
     sede: string;
     modalita: string;
   }>;
-  
+
   SESSIONI_FAD: Array<{
     numero: number;
     data: string;
@@ -325,7 +326,7 @@ export interface PlaceholderMap {
       ora_disconnessione: string;
     }>;
   }>;
-  
+
   SESSIONI_PRESENZA: Array<{
     numero: number;
     data: string;
@@ -337,7 +338,7 @@ export interface PlaceholderMap {
     durata: string;
     sede: string;
   }>;
-  
+
   MODULI: Array<{
     INDEX: number;
     NUMERO: number;
@@ -349,14 +350,14 @@ export interface PlaceholderMap {
     ORE: string;
     TIPO_SEDE: string;
   }>;
-  
+
   LISTA_ARGOMENTI: Array<{
     argomento: string;
     modulo: string;
     ARGOMENTO: string;
     MODULO: string;
   }>;
-  
+
   // Placeholder numerati per partecipanti (dinamici, generati da 1 a N)
   // Es: PARTECIPANTE_1_NOME, PARTECIPANTE_1_COGNOME, PARTECIPANTE_2_COMPLETO, etc.
   [key: `PARTECIPANTE_${number}`]: string;
@@ -474,6 +475,7 @@ export function createEmptyFadSettings(): FadSettings {
     zoom_meeting_id: '',
     zoom_passcode: '',
     zoom_link: '',
+    includeSignature: false, // Default false
   };
 }
 

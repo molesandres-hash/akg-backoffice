@@ -7,19 +7,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Star, Loader2, Video } from 'lucide-react';
-import { 
-  getAllPiattaforme, 
-  addPiattaforma, 
-  updatePiattaforma, 
-  deletePiattaforma, 
+import {
+  getAllPiattaforme,
+  addPiattaforma,
+  updatePiattaforma,
+  deletePiattaforma,
   setDefaultPiattaforma,
-  type DefaultPiattaformaFad 
+  type DefaultPiattaformaFad
 } from '@/db/templateDb';
 import { toast } from 'sonner';
 
 const emptyPiattaforma: Omit<DefaultPiattaformaFad, 'id'> = {
   nome: '',
   linkBase: '',
+  idRiunione: '',
+  password: '',
   isDefault: false,
 };
 
@@ -52,6 +54,8 @@ export function PiattaformeFadManager() {
       setFormData({
         nome: piattaforma.nome,
         linkBase: piattaforma.linkBase,
+        idRiunione: piattaforma.idRiunione || '',
+        password: piattaforma.password || '',
         isDefault: piattaforma.isDefault,
       });
     } else {
@@ -150,6 +154,27 @@ export function PiattaformeFadManager() {
                     placeholder="Es: Zoom, Google Meet, Teams"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="idRiunione">ID Riunione Predefinito</Label>
+                    <Input
+                      id="idRiunione"
+                      value={formData.idRiunione}
+                      onChange={(e) => setFormData({ ...formData, idRiunione: e.target.value })}
+                      placeholder="Es: 123 456 789"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Passcode Predefinito</Label>
+                    <Input
+                      id="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Passcode"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="linkBase">Link Base (opzionale)</Label>
                   <Input
@@ -159,7 +184,7 @@ export function PiattaformeFadManager() {
                     placeholder="https://zoom.us/j/"
                   />
                   <p className="text-xs text-muted-foreground">
-                    URL base per generare i link. I dettagli specifici (ID, passcode) vengono inseriti nel wizard.
+                    URL base per generare i link.
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -249,6 +274,6 @@ export function PiattaformeFadManager() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </Card >
   );
 }

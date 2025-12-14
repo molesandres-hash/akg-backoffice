@@ -30,6 +30,10 @@ export interface ZipConfig {
   modulo8FolderName: string;
   useProgrammaticGeneration?: boolean;
   onlyUserTemplates?: boolean;
+  includeSignatureImage?: boolean; // New flag
+  includeRegistroCartaceo?: boolean;
+  includeConvocazione?: boolean;
+  convocazioneFolderName?: string;
 }
 
 const defaultConfig: ZipConfig = {
@@ -49,7 +53,11 @@ const defaultConfig: ZipConfig = {
   modulo7FolderName: 'modulo 7',
   modulo8FolderName: 'modulo 8',
   useProgrammaticGeneration: false,
-  onlyUserTemplates: false
+  onlyUserTemplates: false,
+  includeSignatureImage: false,
+  includeRegistroCartaceo: true,
+  includeConvocazione: true,
+  convocazioneFolderName: 'Condizionalità'
 };
 
 /**
@@ -190,25 +198,24 @@ async function generateSingleModuleZip(
               console.error('❌ [zipPackager] Error generating Programmatic Modello A:', error);
             }
 
-            // 2. Modello B (Registers per session)
-            // Loop through fadSeassions and generate Modello B for each
-            for (let i = 0; i < fadSessions.length; i++) {
-              const session = fadSessions[i];
-              try {
-                // Pass the index correctly. Note: generateModelloB expects index in the filtered array?
-                // My implementation of generateModelloB used: const session = fadSessions[sessionIndex];
-                // So passing 'i' is correct if 'fadSessions' is the same array.
-                // Here 'fadSessions' is filtered: const fadSessions = currentModule?.sessioni?.filter(s => s.is_fad) || [];
-                // Inside generateModelloB: const fadSessions = currentModule.sessioni.filter((s:any) => s.is_fad);
-                // Yes, it matches.
+            // 2. Modello B (Registers - Merged into one Document)
+            try {
+              const docBlob = await generator.generateModelloB(data, !!config.includeSignatureImage);
+              const fileName = `Modello_B_Registro_Unico_${data.corso.id}.docx`;
+              fadFolder.file(sanitizeFileName(fileName), docBlob);
+              console.log('✅ [zipPackager] Added Programmatic Modello B (Merged) to ZIP');
+            } catch (error) {
+              console.error('❌ [zipPackager] Error generating Programmatic Modello B:', error);
+            }
 
-                const docBlob = await generator.generateModelloB(data, i);
-                const dateStr = session.data_completa.replace(/\//g, '-');
-                fadFolder.file(`Modello_B_FAD_${dateStr}.docx`, docBlob); // Changed name to Modello_B to be clear
-                console.log('✅ [zipPackager] Added Programmatic Modello B for', session.data_completa);
-              } catch (error) {
-                console.error(`❌ [zipPackager] Error generating Programmatic Modello B for ${session.data_completa}:`, error);
-              }
+            // 3. Verbale Fine Corso
+            try {
+              const docBlob = await generator.generateVerbaleFineCorso(data, moduleIndex);
+              const fileName = `Verbale_Fine_Corso_${data.corso.id}.docx`;
+              fadFolder.file(sanitizeFileName(fileName), docBlob);
+              console.log('✅ [zipPackager] Added Programmatic Verbale Fine Corso to ZIP');
+            } catch (error) {
+              console.error('❌ [zipPackager] Error generating Programmatic Verbale Fine Corso:', error);
             }
 
           } else {
@@ -304,37 +311,38 @@ async function generateSingleModuleZip(
     // 6. Modulo 7 - Comunicazione Evento (per beneficiario per lezione)
     if (config.includeModulo7) {
       const beneficiari = data.partecipanti.filter(p => p.benefits);
-      const comEventoTemplate = await getSystemTemplate('comunicazione_evento');
-      console.log('📄 [zipPackager] comunicazione_evento template:', comEventoTemplate ? `FOUND (${comEventoTemplate.name})` : 'NOT FOUND');
 
-      if (comEventoTemplate && beneficiari.length > 0 && currentModule?.sessioni?.length > 0) {
+      // We don't check for template anymore as we use programmatic generation
+      if (beneficiari.length > 0 && currentModule?.sessioni?.length > 0) {
         const mod7Folder = zip.folder(config.modulo7FolderName);
         if (mod7Folder) {
+          // Instantiate generator if not already done (though we might want to reuse one if expensive, but it's cheap class)
+          // Note: We used 'generator' variable in FAD section, check if it's available here or need new instance.
+          // The FAD section is inside an 'if (includeFadRegistries)', so 'generator' might not be in scope. Creates new one.
+          const generator = new ProgrammaticDocxGenerator();
+
           for (const sessione of currentModule.sessioni) {
-            const dateStr = sessione.data_completa.replace(/\//g, '-');
-            const dayFolder = mod7Folder.folder(`Giorno_${dateStr}`);
+            const folderName = formatDateForFolder(sessione.data_completa); // "7 novembre mercoledi"
+            const dayFolder = mod7Folder.folder(folderName);
 
             if (dayFolder) {
               for (const ben of beneficiari) {
-                const eventPlaceholders = createEventPlaceholders(data, sessione, ben, placeholders);
-
                 try {
-                  const docBlob = await generateDocument(
-                    comEventoTemplate.fileBlob,
-                    eventPlaceholders as PlaceholderMap,
-                    comEventoTemplate.name
-                  );
-                  const fileName = `Comunicazione_evento_${dateStr}_${ben.cognome}_${ben.nome}.docx`;
+                  const docBlob = await generator.generateModulo7(data, sessione, ben);
+                  // Filename: Comunicazione_Cpi_NOMECOGNOME.docx as per typical needs, or just per spec?
+                  // Spec doesn't strictly specify filename, but previous code used name. Let's incorporate date too?
+                  // User prompt said: "e poi un documento di questi per ogni partecipante."
+                  // Let's stick to a clear naming: Comunicazione_CPI_{DATA}_{COGNOME}_{NOME}.docx
+                  const dateStrSafe = sessione.data_completa.replace(/\//g, '-');
+                  const fileName = `Comunicazione_CPI_${dateStrSafe}_${ben.cognome}_${ben.nome}.docx`;
                   dayFolder.file(sanitizeFileName(fileName), docBlob);
                 } catch (error) {
-                  console.error(`❌ [zipPackager] Error generating Modulo 7 for ${ben.cognome} on ${dateStr}:`, error);
+                  console.error(`❌ [zipPackager] Error generating Modulo 7 for ${ben.cognome} on ${sessione.data_completa}:`, error);
                 }
               }
             }
           }
         }
-      } else if (!comEventoTemplate && beneficiari.length > 0) {
-        console.warn('⚠️ [zipPackager] Template Comunicazione Evento non configurato nelle impostazioni');
       }
     }
 
@@ -368,6 +376,93 @@ async function generateSingleModuleZip(
       }
     }
   } // END SYSTEM TEMPLATES
+
+  // 8. Registro Presenza Cartaceo (Folder con Head + Pagine Giorno)
+  if (config.includeRegistroCartaceo) {
+    const presenzaSessions = currentModule?.sessioni?.filter(s => !s.is_fad) || [];
+
+    if (presenzaSessions.length > 0) {
+      const regFolder = zip.folder('Registro_Presenza_Cartaceo');
+      if (regFolder) {
+        console.log('📂 [zipPackager] Generating Registro Presenza Cartaceo...');
+
+        // A. Generate Head (Frontespizio)
+        try {
+          const headBlob = await fetchTemplateBlob('/Templates_standard/Registro%20Presenza/registro_head.docx');
+          // Update placeholders for Head if needed context specific?
+          // Base placeholders already have course info.
+          // Need PARTECIPANTI 1..20 (Already added in mapper).
+          // Check if NUMERO_PAGINE is needed?
+          const headPlaceholders = {
+            ...placeholders,
+            NUMERO_PAGINE: (presenzaSessions.length).toString() // Assuming 1 page per session
+          };
+
+          const docBlob = await generateDocument(headBlob, headPlaceholders as PlaceholderMap, 'registro_head.docx');
+          regFolder.file('00_Registro_Head.docx', docBlob);
+          console.log('✅ [zipPackager] Added Registro Presenza Head');
+        } catch (error) {
+          console.error('❌ [zipPackager] Error generating Registro Head:', error);
+        }
+
+        // B. Generate Daily Pages
+        try {
+          const pageTemplateBlob = await fetchTemplateBlob('/Templates_standard/Registro%20Presenza/registro_pagina_giorno.docx');
+
+          for (let i = 0; i < presenzaSessions.length; i++) {
+            const session = presenzaSessions[i];
+            const dateStrIndex = (i + 1).toString().padStart(2, '0');
+            const dateSafe = session.data_completa.replace(/\//g, '-');
+
+            // Create specific placeholders
+            // User asked for: GIORNO_PRES, MESE_PRES, ANNO
+            // Base placeholders have GIORNO, MESE, ANNO (of today).
+            // Session object usually has .giorno, .mese, .anno strings?
+            // Let's check `createSessionPlaceholders` or `session` object in `placeholderMapper`.
+            // The `Sessione` type has `date`, `giorno`, `mese`, `anno`.
+
+            const sessionPlaceholders = {
+              ...placeholders,
+              GIORNO_PRES: session.giorno,
+              MESE_PRES: session.mese,
+              ANNO: session.anno, // Ensure this overrides 'today's year' if different
+              // Add other session specific data if needed by template
+            };
+
+            const pageBlob = await generateDocument(pageTemplateBlob, sessionPlaceholders as PlaceholderMap, 'registro_page.docx');
+            regFolder.file(`${dateStrIndex}_Registro_Giorno_${dateSafe}.docx`, pageBlob);
+          }
+          console.log(`✅ [zipPackager] Added ${presenzaSessions.length} Daily Pages`);
+
+        } catch (error) {
+          console.error('❌ [zipPackager] Error generating Registro Daily Pages:', error);
+        }
+      }
+    }
+  }
+
+  // 9. Convocazione Beneficiario - Cartella "Condizionalità"
+  if (config.includeConvocazione) {
+    const beneficiari = data.partecipanti.filter(p => p.benefits);
+    if (beneficiari.length > 0) {
+      const convFolder = zip.folder(config.convocazioneFolderName || 'Condizionalità');
+      if (convFolder) {
+        console.log('📄 [zipPackager] Generating Convocazione Beneficiario...');
+        const generator = new ProgrammaticDocxGenerator();
+
+        for (const ben of beneficiari) {
+          try {
+            const docBlob = await generator.generateConvocazione(data, ben);
+            const fileName = `Convocazione_${ben.cognome}_${ben.nome}.docx`;
+            convFolder.file(sanitizeFileName(fileName), docBlob);
+          } catch (error) {
+            console.error(`❌ [zipPackager] Error generating Convocazione for ${ben.cognome}:`, error);
+          }
+        }
+        console.log(`✅ [zipPackager] Added ${beneficiari.length} Convocazione documents`);
+      }
+    }
+  }
 
   return zip;
 }
@@ -471,8 +566,10 @@ function generateReadmeContent(data: CourseData, config: ZipConfig): string {
     lines.push(`- ${config.modulo7FolderName}/ (comunicazioni evento per giorno)`);
   }
 
-  if (config.includeModulo8) {
-    lines.push(`- ${config.modulo8FolderName}/ (registri giornalieri presenza)`);
+  lines.push(`- ${config.modulo8FolderName}/ (registri giornalieri presenza)`);
+
+  if (config.includeConvocazione) {
+    lines.push(`- ${config.convocazioneFolderName}/ (convocazioni beneficiari)`);
   }
 
   lines.push('');
@@ -662,4 +759,38 @@ export async function generateExcelOnlyZip(data: CourseData, moduleIndex: number
 
   const zipBlob = await zip.generateAsync({ type: 'blob' });
   saveAs(zipBlob, `Excel_${data.corso.id}.zip`);
+}
+
+/**
+ * Format date for folder name: "7 novembre mercoledi"
+ */
+function formatDateForFolder(dateStr: string): string {
+  // dateStr is DD/MM/YYYY
+  if (!dateStr) return "Data_Sconosciuta";
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return dateStr.replace(/\//g, '-');
+
+  const d = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const y = parseInt(parts[2], 10);
+
+  const date = new Date(y, m - 1, d);
+  if (isNaN(date.getTime())) return dateStr.replace(/\//g, '-');
+
+  const day = date.getDate();
+  const month = date.toLocaleString('it-IT', { month: 'long' });
+  const weekday = date.toLocaleString('it-IT', { weekday: 'long' });
+
+  return `${day} ${month} ${weekday}`;
+}
+
+/**
+ * Helper to fetch template from public URL
+ */
+async function fetchTemplateBlob(url: string): Promise<Blob> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch template from ${url}: ${response.statusText}`);
+  }
+  return await response.blob();
 }

@@ -53,7 +53,6 @@ export async function generateDocument(
     paragraphLoop: true,
     linebreaks: true,
     modules: [imageModule],
-    delimiters: { start: '{', end: '}' },
   });
 
   // Apply data to template

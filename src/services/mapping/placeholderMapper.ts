@@ -76,6 +76,8 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
   };
 }
 
+
+
 /**
  * Genera placeholder numerati per ogni partecipante basandosi sull'ordine dell'array
  * L'indice 0 dell'array corrisponde a PARTECIPANTE_1, indice 1 a PARTECIPANTE_2, etc.
@@ -84,10 +86,17 @@ export function mapCourseDataToPlaceholders(data: CourseData, moduleIndex: numbe
 function generateNumberedParticipantPlaceholders(partecipanti: CourseData['partecipanti']): Record<string, string> {
   const placeholders: Record<string, string> = {};
 
+  // Initialize all slots up to 20 to empty string to ensure the template doesn't show {PARTECIPANTI X}
+  for (let i = 1; i <= 20; i++) {
+    placeholders[`PARTECIPANTI ${i}`] = ''; // Format requested: {PARTECIPANTI 1}
+    placeholders[`PARTECIPANTE_${i}`] = ''; // Standard format
+  }
+
   partecipanti.forEach((p, index) => {
     const num = index + 1; // Indice 0 → Partecipante 1
     const nomeCompleto = [p.nome, p.cognome].filter(Boolean).join(' ');
 
+    // Standard format
     placeholders[`PARTECIPANTE_${num}`] = nomeCompleto;
     placeholders[`PARTECIPANTE_${num}_NOME`] = p.nome || '';
     placeholders[`PARTECIPANTE_${num}_COGNOME`] = p.cognome || '';
@@ -96,12 +105,16 @@ function generateNumberedParticipantPlaceholders(partecipanti: CourseData['parte
     placeholders[`PARTECIPANTE_${num}_CODICE_FISCALE`] = p.codiceFiscale || '';
     placeholders[`PARTECIPANTE_${num}_EMAIL`] = p.email || '';
     placeholders[`PARTECIPANTE_${num}_TELEFONO`] = p.telefono || '';
+
+    // Requested format for Registro Presenza: "{PARTECIPANTI 1}"
+    placeholders[`PARTECIPANTI ${num}`] = nomeCompleto;
   });
 
   return placeholders;
 }
 
 function formatItalianDate(date: Date): string { return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`; }
+
 function getItalianMonth(m: number): string { return ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'][m] || ''; }
 // Costanti pausa pranzo
 const LUNCH_BREAK_START = 13;

@@ -1,14 +1,48 @@
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Video, Link2, Settings2 } from 'lucide-react';
+import { Video, Link2, Settings2, Loader2, FileSignature } from 'lucide-react';
 import { useWizardStore } from '@/store/wizardStore';
+import { getAllPiattaforme, type DefaultPiattaformaFad } from '@/db/templateDb';
+import { Switch } from '@/components/ui/switch';
 
 export function FadSettingsForm() {
   const { courseData, updateFadSettings } = useWizardStore();
   const { fad_settings } = courseData;
+  const [piattaforme, setPiattaforme] = useState<DefaultPiattaformaFad[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPiattaforme = async () => {
+      try {
+        const data = await getAllPiattaforme();
+        console.log("Loaded piattaforme:", data);
+        setPiattaforme(data);
+      } catch (error) {
+        console.error("Error loading piattaforme:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPiattaforme();
+  }, []);
+
+  const handlePiattaformaChange = (value: string) => {
+    const selectedPlatform = piattaforme.find(p => p.nome === value);
+
+    updateFadSettings({
+      piattaforma: value,
+      // Auto-fill details if available
+      ...(selectedPlatform && {
+        zoom_link: selectedPlatform.linkBase || fad_settings.zoom_link,
+        zoom_meeting_id: selectedPlatform.idRiunione || fad_settings.zoom_meeting_id,
+        zoom_passcode: selectedPlatform.password || fad_settings.zoom_passcode,
+      })
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -26,28 +60,36 @@ export function FadSettingsForm() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Piattaforma</Label>
-            <Select 
-              value={fad_settings.piattaforma} 
-              onValueChange={(value) => updateFadSettings({ piattaforma: value })}
+            <Select
+              value={fad_settings.piattaforma}
+              onValueChange={handlePiattaformaChange}
+              disabled={loading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleziona piattaforma" />
+                <SelectValue placeholder={loading ? "Caricamento..." : "Seleziona piattaforma"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Microsoft Teams">Microsoft Teams</SelectItem>
-                <SelectItem value="Zoom">Zoom</SelectItem>
-                <SelectItem value="Google Meet">Google Meet</SelectItem>
-                <SelectItem value="Webex">Cisco Webex</SelectItem>
-                <SelectItem value="GoToMeeting">GoToMeeting</SelectItem>
+                {piattaforme.length > 0 ? (
+                  piattaforme.map((p) => (
+                    <SelectItem key={p.id} value={p.nome}>{p.nome}</SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="Nessuna">Nessuna piattaforma salvata</SelectItem>
+                )}
                 <SelectItem value="Altra">Altra</SelectItem>
               </SelectContent>
             </Select>
+            {piattaforme.length === 0 && !loading && (
+              <p className="text-xs text-muted-foreground text-orange-600">
+                Consiglio: configura le piattaforme nelle Impostazioni per averle qui.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Modalità Gestione</Label>
-            <Select 
-              value={fad_settings.modalita_gestione} 
+            <Select
+              value={fad_settings.modalita_gestione}
               onValueChange={(value) => updateFadSettings({ modalita_gestione: value })}
             >
               <SelectTrigger>
@@ -63,8 +105,8 @@ export function FadSettingsForm() {
 
           <div className="space-y-2">
             <Label>Modalità Valutazione</Label>
-            <Select 
-              value={fad_settings.modalita_valutazione} 
+            <Select
+              value={fad_settings.modalita_valutazione}
               onValueChange={(value) => updateFadSettings({ modalita_valutazione: value })}
             >
               <SelectTrigger>
@@ -87,6 +129,23 @@ export function FadSettingsForm() {
               onChange={(e) => updateFadSettings({ obiettivi_didattici: e.target.value })}
               placeholder="Descrivi gli obiettivi didattici del corso..."
               rows={3}
+            />
+          </div>
+
+          <div className="flex items-center justify-between space-x-2 pt-2 border-t">
+            <Label htmlFor="include-signature" className="flex flex-col space-y-1">
+              <span className="flex items-center gap-2 font-medium">
+                <FileSignature className="w-4 h-4" />
+                Includi Firma Docente
+              </span>
+              <span className="font-normal text-xs text-muted-foreground">
+                Inserisce l'immagine della firma nel Modello B
+              </span>
+            </Label>
+            <Switch
+              id="include-signature"
+              checked={fad_settings.includeSignature}
+              onCheckedChange={(checked) => updateFadSettings({ includeSignature: checked })}
             />
           </div>
         </CardContent>

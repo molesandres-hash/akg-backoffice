@@ -48,9 +48,10 @@ export function Step4Generate() {
   const [includeExcel, setIncludeExcel] = useState(true);
   const [includeFadRegistries, setIncludeFadRegistries] = useState(true);
   const [includeCertificates, setIncludeCertificates] = useState(false);
-  const [includeModulo5, setIncludeModulo5] = useState(false);
-  const [includeModulo7, setIncludeModulo7] = useState(false);
-  const [includeModulo8, setIncludeModulo8] = useState(false);
+  const [includeModulo5, setIncludeModulo5] = useState(true);
+  const [includeModulo7, setIncludeModulo7] = useState(true);
+  const [includeModulo8, setIncludeModulo8] = useState(true);
+  const [includeRegistroCartaceo, setIncludeRegistroCartaceo] = useState(true);
   const [includeReadme, setIncludeReadme] = useState(false);
   const [includeMetadata, setIncludeMetadata] = useState(false);
 
@@ -85,10 +86,12 @@ export function Step4Generate() {
           includeModulo5: includeModulo5 && beneficiari.length > 0,
           includeModulo7: includeModulo7 && beneficiari.length > 0,
           includeModulo8: includeModulo8 && presenzaSessions.length > 0,
+          includeRegistroCartaceo: includeRegistroCartaceo && presenzaSessions.length > 0,
           includeReadme,
           includeMetadata,
           useProgrammaticGeneration,
-          onlyUserTemplates: generateOnlyCustom
+          onlyUserTemplates: generateOnlyCustom,
+          includeSignatureImage: courseData.fad_settings.includeSignature
         };
         await generateCourseZip(courseData, selectedTemplateIds, config, signature);
       }
@@ -341,6 +344,17 @@ export function Step4Generate() {
                   />
                   <Label htmlFor="includeModulo8" className="text-sm">
                     Modulo 8 - Registro Giornaliero
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Checkbox
+                    id="includeRegistroCartaceo"
+                    checked={includeRegistroCartaceo}
+                    disabled={presenzaSessions.length === 0}
+                    onCheckedChange={(c) => setIncludeRegistroCartaceo(c === true)}
+                  />
+                  <Label htmlFor="includeRegistroCartaceo" className="text-sm">
+                    Registro Presenza Cartaceo (Head + Giorni)
                   </Label>
                 </div>
               </div>

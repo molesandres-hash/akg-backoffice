@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 
 // System Template Types - dedicated slots for specific document types
-export type SystemTemplateType = 
+export type SystemTemplateType =
   | 'modello_a_fad'           // Registro Generale FAD
   | 'modello_b_fad'           // Registro Giornaliero FAD (per sessione)
   | 'certificato'             // Attestato/Certificato per partecipante
@@ -88,6 +88,8 @@ export interface DefaultPiattaformaFad {
   id?: number;
   nome: string;
   linkBase: string;
+  idRiunione?: string;
+  password?: string;
   isDefault: boolean;
 }
 
@@ -133,7 +135,7 @@ class TemplateDatabase extends Dexie {
 
   constructor() {
     super('MagicFormDB');
-    
+
     this.version(4).stores({
       templates: '++id, name, category, uploadDate, isDefault',
       settings: '++id',
@@ -210,7 +212,7 @@ export async function getAllSystemTemplates(): Promise<SystemTemplate[]> {
 export async function setSystemTemplate(type: SystemTemplateType, file: File | Blob, name: string): Promise<void> {
   const existing = await getSystemTemplate(type);
   const fileBlob = file instanceof File ? file : file;
-  
+
   if (existing?.id) {
     await db.systemTemplates.update(existing.id, {
       name,
