@@ -19,22 +19,22 @@ export interface ExtractionResponse {
 // Formatta l'input strutturato per l'AI con separatori chiari
 function formatInputForAI(input: StructuredInput): string {
   const parts: string[] = [];
-  
+
   if (input.corso.trim()) {
     parts.push(`=== DATI CORSO PRINCIPALE ===
 ${input.corso}`);
   }
-  
+
   if (input.moduli.trim()) {
     parts.push(`=== DATI MODULI (FONTE DI VERITÀ PER ID) ===
 ${input.moduli}`);
   }
-  
+
   if (input.partecipanti.trim()) {
     parts.push(`=== ELENCO PARTECIPANTI ===
 ${input.partecipanti}`);
   }
-  
+
   return parts.join('\n\n');
 }
 
@@ -43,10 +43,29 @@ function convertSession(raw: { data: string; ora_inizio: string; ora_fine: strin
   const [giorno, meseNumero, anno] = raw.data.split('/');
   const mesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
   const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-  
+
   const date = new Date(parseInt(anno), parseInt(meseNumero) - 1, parseInt(giorno));
   const giornoSettimana = giorni[date.getDay()];
   const mese = mesi[parseInt(meseNumero) - 1];
+
+  const lowerSede = (raw.sede || '').toLowerCase();
+  const lowerTipo = (raw.tipo_sede || '').toLowerCase();
+
+  // Logic to determine type and FAD status
+  let tipoSede: 'presenza' | 'online' | 'fad' = 'presenza';
+  let isFad = false;
+
+  if (raw.is_fad || lowerTipo === 'online' || lowerTipo === 'fad' || lowerSede.includes('online')) {
+    tipoSede = 'online';
+    isFad = true;
+  } else if (lowerTipo === 'ufficio' || lowerTipo === 'presenza' || lowerSede.includes('ufficio')) {
+    tipoSede = 'presenza';
+    isFad = false;
+  } else {
+    // Default fallback if unclear, but usually 'Ufficio' in raw string means presence
+    tipoSede = 'presenza';
+    isFad = false;
+  }
 
   return {
     numero: index + 1,
@@ -59,8 +78,8 @@ function convertSession(raw: { data: string; ora_inizio: string; ora_fine: strin
     ora_inizio: raw.ora_inizio,
     ora_fine: raw.ora_fine,
     sede: raw.sede || '',
-    tipo_sede: raw.is_fad ? 'online' : (raw.tipo_sede as 'presenza' | 'online' | 'fad' | '' || 'presenza'),
-    is_fad: raw.is_fad ?? false
+    tipo_sede: tipoSede,
+    is_fad: isFad
   };
 }
 
@@ -216,7 +235,7 @@ function compareResults(result1: ExtractionResult, result2: ExtractionResult): {
     total += 2;
     if (result1.moduli[i].id_corso === result2.moduli[i].id_corso) matches++;
     else warnings.push(`ID Corso modulo ${i + 1} differisce`);
-    
+
     if (result1.moduli[i].id_sezione === result2.moduli[i].id_sezione) matches++;
     else warnings.push(`ID Sezione modulo ${i + 1} differisce`);
   }
@@ -252,7 +271,7 @@ export class ExtractionService {
     }
 
     // Convert string input to structured if needed (backward compatibility)
-    const structuredInput: StructuredInput = typeof input === 'string' 
+    const structuredInput: StructuredInput = typeof input === 'string'
       ? { corso: input, moduli: '', partecipanti: '' }
       : input;
 
@@ -285,16 +304,16 @@ export class ExtractionService {
   private async extractMultiStep(input: string): Promise<ExtractionResponse> {
     // Step 1: Calendar and structure
     const step1 = await geminiClient.extractStep1(input);
-    
+
     // Step 2: IDs and metadata
     const step2 = await geminiClient.extractStep2(input);
-    
+
     // Step 3: Participants
     const step3 = await geminiClient.extractStep3(input);
-    
+
     // Merge all results
     const merged = mergeResults(step1, step2, step3);
-    
+
     return { result: convertToExtractionResult(merged) };
   }
 

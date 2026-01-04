@@ -473,6 +473,13 @@ export class ProgrammaticDocxGenerator {
         }
 
         const supervisorEmail = `${supervisorName}.${supervisorSurname}@akgitalia.it`.toLowerCase().replace(/\s+/g, '');
+
+        // Define missing variables used in the template
+        const luogo = data.ente.accreditato.comune || "Milano";
+        const dataInizio = data.corso.data_inizio;
+        const dataFine = data.corso.data_fine;
+        const idSezione = data.moduli.find(m => m.id_sezione)?.id_sezione || 'N/D';
+        const sedeIndirizzo = data.sede.indirizzo || "Indirizzo non presente";
         // Generate Session Rows for the Calendar
         const sessionRows: TableRow[] = [];
         const allSessions = data.moduli.flatMap(m => m.sessioni).sort((a, b) => {
@@ -544,7 +551,7 @@ export class ProgrammaticDocxGenerator {
                         bottom: "1.0cm",
                         left: "1.5cm",
                         right: "1.5cm"
-                    }
+                    } as const
                 }
             },
             headers: { default: header },
@@ -638,7 +645,7 @@ export class ProgrammaticDocxGenerator {
                             new TextRun({ text: " e per i percettori RDC", font: FONT_FAMILY, size: FONT_SIZE_BODY }),
                             new TextRun({ text: "3", font: FONT_FAMILY, size: 14, superScript: true }),
                             new TextRun({
-                                text: "). Più precisamente, ai fini dell’irrogazione delle sanzioni previste, l’ipotesi della “mancata partecipazione” sarà integrata nei casi di assenza non giustificata per almeno due giornate in ciascun mese di attività (Circolare ANPAL n. 1 del 05/08/2022).",
+                                text: "). Più precisamente, ai fini dell’erogazione delle sanzioni previste, l’ipotesi della “mancata partecipazione” sarà integrata nei casi di assenza non giustificata per almeno due giornate in ciascun mese di attività (Circolare ANPAL n. 1 del 05/08/2022).",
                                 font: FONT_FAMILY,
                                 size: FONT_SIZE_BODY
                             })
@@ -720,7 +727,7 @@ export class ProgrammaticDocxGenerator {
                         children: [
                             new TextRun({ text: "2 ", superScript: true, font: FONT_FAMILY, size: 16 }),
                             new TextRun({
-                                text: "Per la CONDIZIONALITA’ NASPI E DIS-COLL, le sanzioni applicabili previste dal D. Lgs. 150/2015, art. 21 comma 7 così come richiamate dalla Circolare ANPAL n. 1 del 5/08/2022 prevedono: in caso di mancata presentazione, in assenza di giustificato motivo, per almeno due giornate in ciascun mese di attività, a iniziative di carattere formativo o di riqualificazione o altra iniziativa di politica attiva o di attivazione e mancata presentazione/partecipazione allo svolgimento di attività a fini di pubblica utilità a beneficio della comunità territoriale di appartenenza: 1) la decurtazione di una mensilità, alla prima mancata partecipazione; 2) la decadenza dalla prestazione e dallo stato di disoccupazione, in caso di ulteriore mancata presentazione.",
+                                text: "Per la CONDIZIONALITÀ NASPI e DIS-COLL, le sanzioni applicabili previste dal D. Lgs. 150/2015, art. 21 comma 7 così come richiamate dalla Circolare ANPAL n. 1 del 05/08/2022 prevedono: in caso di mancata presentazione, in assenza di giustificato motivo, per almeno due giornate in ciascun mese di attività, a iniziative di carattere formativo o di riqualificazione o altra iniziativa di politica attiva o di attivazione e mancata presentazione/partecipazione allo svolgimento di attività a fini di pubblica utilità a beneficio della comunità territoriale di appartenenza: 1) la decurtazione di una mensilità, alla prima mancata partecipazione; 2) la decadenza dalla prestazione e dallo stato di disoccupazione, in caso di ulteriore mancata presentazione.",
                                 font: FONT_FAMILY,
                                 size: 16
                             }),
@@ -731,7 +738,7 @@ export class ProgrammaticDocxGenerator {
                         children: [
                             new TextRun({ text: "3 ", superScript: true, font: FONT_FAMILY, size: 16 }),
                             new TextRun({
-                                text: "Per la CONDIZIONALITA’ RDC le sanzioni applicabili previste dall’art. 7, co. 5, lett. c), del D.L. 2/2019 cosi come richiamate dalla Circolare ANPAL n. 1 del 5/08/2022 prevedono: la decadenza dal RDC quando uno dei componenti il nucleo familiare non partecipa, in assenza di giustificato motivo, alle iniziative di carattere formativo o di riqualificazione o ad altra iniziativa di politica attiva o di attivazione, di cui all’art. 20, comma 3, lett. b) del d.lgs. 150/15. Si precisa che anche tale sanzione verrà irrogata nei casi di mancata presentazione, in assenza di giustificato motivo, per almeno due giornate in ciascun mese di attività.",
+                                text: "Per la CONDIZIONALITÀ RDC le sanzioni applicabili previste dall’art. 7, co. 5, lett. c), del D.L. 2/2019 così come richiamate dalla Circolare ANPAL n. 1 del 05/08/2022 prevedono: la decadenza dal RDC quando uno dei componenti il nucleo familiare non partecipa, in assenza di giustificato motivo, alle iniziative di carattere formativo o di riqualificazione o altra iniziativa di politica attiva o di attivazione, di cui all’art. 20, comma 3, lett. b) del d.lgs. 150/15. Si precisa anche che tale sanzione verrà irrogata nei casi di mancata presentazione, in assenza di giustificato motivo, per almeno due giornate in ciascun mese di attività.",
                                 font: FONT_FAMILY,
                                 size: 16
                             }),
@@ -1957,7 +1964,7 @@ export class ProgrammaticDocxGenerator {
     }
 
     // --- CONVOCAZIONE BENEFICIARIO GENERATION (FILLED) ---
-    public async generateConvocazione(data: CourseData, partecipante: Partecipante): Promise<Blob> {
+    public async generateConvocazione_UNUSED(data: CourseData, partecipante: Partecipante): Promise<Blob> {
         // Load Header Image
         let headerImageBuffer: ArrayBuffer | null = null;
         try {

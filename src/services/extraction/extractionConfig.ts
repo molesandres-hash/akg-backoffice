@@ -35,7 +35,18 @@ IMPORTANTE GENERALE:
 - Per gli orari usa formato HH:MM
 - Estrai TUTTI i partecipanti dall'elenco
 - Per tipo_sede distingui tra "Presenza", "Online", "FAD" quando applicabile
-- IMPORTANTE: Se estrai argomenti per i moduli, genera ESATTAMENTE un numero di argomenti pari al numero di giorni di lezione del modulo.`;
+- IMPORTANTE: Se estrai argomenti per i moduli, genera ESATTAMENTE un numero di argomenti pari al numero di giorni di lezione del modulo.
+39: 
+40: IMPORTANTE PER TIPO SEDE E SESSIONI MISTE:
+41: - Molti corsi hanno sessioni miste (alcune "Ufficio", altre "Online").
+42: - Se vedi scritto "Ufficio" o un indirizzo fisico nella riga della sessione, il tipo_sede è "Presenza".
+43: - Se vedi scritto "Online", "FAD" o "Teams/Zoom", il tipo_sede è "Online" (is_fad = true).
+44: - Nella tabella moduli, se le sessioni sono miste, indica "Misto" come tipo_sede del modulo, oppure il tipo prevalente.
+45: - Nell'array "sessioni_raw", per OGNI singola sessione, specifica chiaramente:
+46:   - tipo_sede: "Presenza" (se Ufficio) o "Online" (se Online/FAD)
+47:   - is_fad: true se Online, false se Presenza/Ufficio
+48: - Esempio riga sessione: "09/12/2025 09:00 - 17:00 - Ufficio" -> tipo_sede: "Presenza", is_fad: false
+49: - Esempio riga sessione: "10/12/2025 09:00 - 17:00 - Online" -> tipo_sede: "Online", is_fad: true`;
 
 export const EXTRACTION_SCHEMA = {
   type: "object",
