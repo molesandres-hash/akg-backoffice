@@ -7,10 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Plus, Pencil, Trash2, Star, Loader2, Building2, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
-import { 
-  getAllEnti, 
-  addEnte, 
-  updateEnte, 
+import {
+  getAllEnti,
+  addEnte,
+  updateEnte,
   deleteEnte,
   setDefaultEnte,
   getAllSedi,
@@ -19,9 +19,10 @@ import {
   deleteSede,
   setDefaultSede,
   type DefaultEnte,
-  type DefaultSede 
+  type DefaultSede
 } from '@/db/templateDb';
 import { toast } from 'sonner';
+import { ImageUploader } from '../signatures/ImageUploader';
 
 const emptyEnte: Omit<DefaultEnte, 'id'> = {
   nome: '',
@@ -36,6 +37,7 @@ const emptySede: Omit<DefaultSede, 'id'> = {
   cap: '',
   provincia: '',
   enteId: undefined,
+  timbro: undefined,
   isDefault: false,
 };
 
@@ -44,12 +46,12 @@ export function EntiSediManager() {
   const [sedi, setSedi] = useState<DefaultSede[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedEnti, setExpandedEnti] = useState<Set<number>>(new Set());
-  
+
   // Ente dialog
   const [enteDialogOpen, setEnteDialogOpen] = useState(false);
   const [editingEnte, setEditingEnte] = useState<DefaultEnte | null>(null);
   const [enteFormData, setEnteFormData] = useState<Omit<DefaultEnte, 'id'>>(emptyEnte);
-  
+
   // Sede dialog
   const [sedeDialogOpen, setSedeDialogOpen] = useState(false);
   const [editingSede, setEditingSede] = useState<DefaultSede | null>(null);
@@ -144,6 +146,7 @@ export function EntiSediManager() {
         cap: sede.cap,
         provincia: sede.provincia,
         enteId: sede.enteId,
+        timbro: sede.timbro,
         isDefault: sede.isDefault,
       });
     } else {
@@ -361,7 +364,7 @@ export function EntiSediManager() {
 
       {/* Sede Dialog */}
       <Dialog open={sedeDialogOpen} onOpenChange={setSedeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingSede ? 'Modifica Sede' : 'Nuova Sede'}</DialogTitle>
             <DialogDescription>Inserisci i dati della sede operativa</DialogDescription>
@@ -416,7 +419,39 @@ export function EntiSediManager() {
                 maxLength={5}
               />
             </div>
-            <div className="flex items-center space-x-2">
+
+            <div className="space-y-3 pt-2">
+              <Label>Timbro Sede</Label>
+              {sedeFormData.timbro ? (
+                <div className="p-4 border rounded-md bg-muted/20 relative group">
+                  <div className="flex justify-center">
+                    <img
+                      src={sedeFormData.timbro}
+                      alt="Timbro Sede"
+                      className="max-h-32 object-contain mix-blend-multiply"
+                    />
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setSedeFormData({ ...sedeFormData, timbro: undefined })}
+                    title="Rimuovi timbro"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border border-dashed rounded-md p-4 bg-muted/10">
+                  <ImageUploader
+                    type="stamp"
+                    onSave={(dataUrl) => setSedeFormData({ ...sedeFormData, timbro: dataUrl })}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
               <Checkbox
                 id="sedeDefault"
                 checked={sedeFormData.isDefault}

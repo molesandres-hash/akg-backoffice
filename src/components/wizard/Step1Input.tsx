@@ -7,20 +7,20 @@ import { Sparkles, Loader2, FileText, AlertCircle, CheckCircle, AlertTriangle, I
 import { useWizardStore } from '@/store/wizardStore';
 import { toast } from 'sonner';
 import { extractionService, type ExtractionMode, type ExtractionResponse } from '@/services/extraction';
-import { getSettings } from '@/db/templateDb';
+import { getSettings, getDefaultEnte, getDefaultPiattaforma } from '@/db/templateDb';
 import { useState } from 'react';
 
 export function Step1Input() {
-  const { 
+  const {
     inputCorso,
     inputModuli,
     inputPartecipanti,
     setInputCorso,
     setInputModuli,
     setInputPartecipanti,
-    setExtractionResult, 
-    nextStep, 
-    isExtracting, 
+    setExtractionResult,
+    nextStep,
+    isExtracting,
     setIsExtracting,
     extractionError,
     setExtractionError
@@ -28,7 +28,7 @@ export function Step1Input() {
 
   const [extractionResponse, setExtractionResponse] = useState<ExtractionResponse | null>(null);
 
-  const handleExtract = async () => {
+  const handleExtract = async (overrideMode?: ExtractionMode | 'rule-based') => {
     // Almeno uno dei campi deve essere compilato
     if (!inputCorso.trim() && !inputModuli.trim() && !inputPartecipanti.trim()) {
       toast.error('Inserisci del testo in almeno un blocco');
@@ -42,14 +42,15 @@ export function Step1Input() {
     try {
       // Get settings for extraction mode
       const settings = await getSettings();
-      const mode: ExtractionMode = settings?.extractionMode || 'standard';
-      
-      // Check if API key is configured
+      // Use override if provided, otherwise settings or standard
+      const mode = overrideMode || settings?.extractionMode || 'standard';
+
+      // Check if API key is configured (unless rule-based)
       const apiKey = localStorage.getItem('gemini_api_key') || settings?.geminiApiKey;
-      if (!apiKey) {
+      if (mode !== 'rule-based' && !apiKey) {
         throw new Error('Gemini API Key non configurata. Vai nelle Impostazioni > Generali per inserirla.');
       }
-      
+
       // Sync to localStorage if from DB
       if (!localStorage.getItem('gemini_api_key') && settings?.geminiApiKey) {
         localStorage.setItem('gemini_api_key', settings.geminiApiKey);
@@ -61,8 +62,41 @@ export function Step1Input() {
         moduli: inputModuli,
         partecipanti: inputPartecipanti
       };
-      
-      const response = await extractionService.extract(structuredInput, mode);
+
+      const response = await extractionService.extract(structuredInput, mode as any);
+
+      // --- APPLY DEFAULTS Logic ---
+      try {
+        const [defaultEnte, defaultFad] = await Promise.all([
+          getDefaultEnte(),
+          getDefaultPiattaforma()
+        ]);
+
+        // Fix Ente if empty
+        if (!response.result.ente.nome && defaultEnte) {
+          response.result.ente.nome = defaultEnte.nome;
+          response.result.ente.indirizzo = defaultEnte.indirizzo;
+        }
+
+        // Fix FAD Settings if empty or generic
+        if (defaultFad) {
+          // Always use default platform name if extracted is empty
+          if (!response.result.fad_settings.piattaforma) {
+            response.result.fad_settings.piattaforma = defaultFad.nome;
+          }
+
+          // If platform matches default (or was just set), try to fill other fields if empty
+          if (response.result.fad_settings.piattaforma === defaultFad.nome) {
+            if (!response.result.fad_settings.zoom_link) response.result.fad_settings.zoom_link = defaultFad.linkBase;
+            if (!response.result.fad_settings.zoom_meeting_id) response.result.fad_settings.zoom_meeting_id = defaultFad.idRiunione || '';
+            if (!response.result.fad_settings.zoom_passcode) response.result.fad_settings.zoom_passcode = defaultFad.password || '';
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to apply defaults:', err);
+      }
+      // -----------------------------
+
       setExtractionResponse(response);
       setExtractionResult(response.result);
 
@@ -91,7 +125,7 @@ export function Step1Input() {
 
   const getConfidenceBadge = () => {
     if (!extractionResponse?.confidence) return null;
-    
+
     switch (extractionResponse.confidence) {
       case 'excellent':
         return (
@@ -231,9 +265,20 @@ export function Step1Input() {
       )}
 
       {/* Pulsante Estrai */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
         <Button
-          onClick={handleExtract}
+          onClick={() => handleExtract('rule-based')}
+          disabled={!hasInput || isExtracting}
+          variant="outline"
+          size="lg"
+          className="gap-2"
+        >
+          <FileText className="w-4 h-4" />
+          Estrai con Regole (No AI)
+        </Button>
+
+        <Button
+          onClick={() => handleExtract('standard')}
           disabled={!hasInput || isExtracting}
           size="lg"
           className="gap-2"
@@ -256,7 +301,7 @@ export function Step1Input() {
       <Alert variant="default" className="border-accent/30 bg-accent/5">
         <Info className="h-4 w-4 text-accent" />
         <AlertDescription className="text-sm">
-          L'estrazione avviene in locale usando la tua API Key di Google Gemini. 
+          L'estrazione avviene in locale usando la tua API Key di Google Gemini.
           Puoi configurare la modalità di estrazione nelle <strong>Impostazioni &gt; Generali</strong>.
         </AlertDescription>
       </Alert>

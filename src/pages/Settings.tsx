@@ -8,14 +8,17 @@ import { PiattaformeFadManager } from '@/components/admin/PiattaformeFadManager'
 import { ListeArgomentiManager } from '@/components/admin/ListeArgomentiManager';
 import { SystemTemplateSlots } from '@/components/admin/SystemTemplateSlots';
 import { TemplateManager } from '@/components/admin/TemplateManager';
+import { CorsistiSignaturesManager } from '@/components/admin/CorsistiSignaturesManager';
+import { StampsManager } from '@/components/admin/StampsManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Settings as SettingsIcon, 
-  FileText, 
-  FolderOpen, 
-  Users, 
-  Building2, 
-  BookOpen 
+import {
+  Settings as SettingsIcon,
+  FileText,
+  FolderOpen,
+  Users,
+  Building2,
+  BookOpen,
+  PenTool
 } from 'lucide-react';
 
 const Settings = () => {
@@ -30,7 +33,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto gap-1">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 h-auto gap-1">
             <TabsTrigger value="general" className="gap-2 text-xs md:text-sm">
               <SettingsIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Generali</span>
@@ -38,6 +41,10 @@ const Settings = () => {
             <TabsTrigger value="personale" className="gap-2 text-xs md:text-sm">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Personale</span>
+            </TabsTrigger>
+            <TabsTrigger value="timbri" className="gap-2 text-xs md:text-sm">
+              <PenTool className="w-4 h-4" />
+              <span className="hidden sm:inline">Timbri</span>
             </TabsTrigger>
             <TabsTrigger value="organizzazione" className="gap-2 text-xs md:text-sm">
               <Building2 className="w-4 h-4" />
@@ -65,6 +72,11 @@ const Settings = () => {
             <DocentiManager />
             <SupervisoriManager />
             <ResponsabiliCertificazioneManager />
+            <CorsistiSignaturesManager />
+          </TabsContent>
+
+          <TabsContent value="timbri">
+            <StampsManager />
           </TabsContent>
 
           <TabsContent value="organizzazione" className="space-y-6">

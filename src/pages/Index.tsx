@@ -1,9 +1,7 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { WizardStepper } from '@/components/wizard/WizardStepper';
 import { Step1Input } from '@/components/wizard/Step1Input';
-import { Step2DataReview } from '@/components/wizard/Step2DataReview';
-import { Step3TemplateSelect } from '@/components/wizard/Step3TemplateSelect';
-import { Step4Generate } from '@/components/wizard/Step4Generate';
+import { DashboardView } from '@/components/wizard/DashboardView';
 import { useWizardStore } from '@/store/wizardStore';
 
 const Index = () => {
@@ -14,13 +12,10 @@ const Index = () => {
       case 0:
         return <Step1Input />;
       case 1:
-        return <Step2DataReview />;
-      case 2:
-        return <Step3TemplateSelect />;
-      case 3:
-        return <Step4Generate />;
+        return <DashboardView />;
       default:
-        return <Step1Input />;
+        // Any step > 0 counts as Dashboard now
+        return <DashboardView />;
     }
   };
 
@@ -30,8 +25,8 @@ const Index = () => {
         {/* Stepper */}
         <div className="border-b bg-card/50">
           <div className="container max-w-5xl">
-            <WizardStepper 
-              currentStep={currentStep} 
+            <WizardStepper
+              currentStep={currentStep}
               onStepClick={setCurrentStep}
             />
           </div>

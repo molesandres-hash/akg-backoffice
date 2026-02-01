@@ -81,6 +81,7 @@ export interface DefaultSede {
   cap: string;
   provincia: string;
   enteId?: number;
+  timbro?: string; // Base64 image string
   isDefault: boolean;
 }
 

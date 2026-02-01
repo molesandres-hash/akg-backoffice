@@ -7,15 +7,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Star, Loader2, UserCircle } from 'lucide-react';
-import { 
-  getAllDocenti, 
-  addDocente, 
-  updateDocente, 
-  deleteDocente, 
+import {
+  getAllDocenti,
+  addDocente,
+  updateDocente,
+  deleteDocente,
   setDefaultDocente,
-  type DefaultDocente 
+  type DefaultDocente
 } from '@/db/templateDb';
 import { toast } from 'sonner';
+import { SignatureField } from '@/components/signatures/SignatureField';
 
 const emptyDocente: Omit<DefaultDocente, 'id'> = {
   nome: '',
@@ -209,6 +210,13 @@ export function DocentiManager() {
                     Imposta come predefinito
                   </Label>
                 </div>
+
+                {(formData.nome && formData.cognome) && (
+                  <SignatureField
+                    name={`${formData.nome} ${formData.cognome}`}
+                    type="docente"
+                  />
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>

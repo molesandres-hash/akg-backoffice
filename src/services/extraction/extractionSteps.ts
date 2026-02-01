@@ -16,7 +16,7 @@ export const STEP_1_PROMPT = `Analizza i dati forniti e estrai SOLO:
    - Data (formato DD/MM/YYYY)
    - Ora inizio (formato HH:MM)
    - Ora fine (formato HH:MM)
-   - Se è FAD o presenza
+   - Tipo Sede REALE: Se la sessione è Online/FAD (anche se la sede amministrativa è un ufficio), scrivi "Online".
 
 3. INFO BASE CORSO:
    - Titolo
@@ -24,8 +24,18 @@ export const STEP_1_PROMPT = `Analizza i dati forniti e estrai SOLO:
    - Data inizio e fine
    - Ore totali
 
+REGOLA CRITICA PER "TIPO SEDE" E "FAD":
+- Molti corsi hanno una Sede Amministrativa (via...) ma si svolgono Online.
+- SE LE SESSIONI SONO INDICATE COME "ONLINE", "FAD", "WEBINAR" O "TEAMS/ZOOM":
+  -> Il corso è FAD/Online. Ignora l'indirizzo dell'ufficio.
+- NON SCRIVERE MAI SPIEGAZIONI nel campo tipo_sede.
+- Usa SOLO: "Online", "Presenza", "Misto".
+- Se scrivi una frase lunga tipo "Ufficio ma svolgimento online..." VIENE GENERATO UN ERRORE GRAVE.
+
 IMPORTANTE: 
 - Se ci sono PIÙ MODULI, crea un oggetto separato per ognuno
+- Se ci sono sessioni miste o complesse, estrai TUTTE le date accuratamente
+- Fai attenzione a cambi di mese o anno
 - Associa le sessioni al modulo corretto in base alle date
 - NON estrarre ID, partecipanti o altri dati`;
 
@@ -39,7 +49,8 @@ export const STEP_2_PROMPT = `Analizza i dati forniti e estrai SOLO:
    - Cerca la tabella "Moduli" o la sezione "Ricerca"
    - Estrai ID Corso (tipicamente 5 cifre, es. 50039)
    - Estrai ID Sezione (tipicamente 6 cifre, es. 144176)
-   - IGNORA l'ID nella sezione "Dettagli di base"!
+   - ATTENZIONE: Se c'è un solo modulo, l'ID corretto è QUASI SEMPRE in questa sezione moduli.
+   - Dai priorità agli ID di questa sezione rispetto a quelli generici.
 
 2. INFO CORSO AGGIUNTIVE:
    - ID corso (dalla sezione dettagli)

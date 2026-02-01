@@ -16,8 +16,13 @@ import {
     NumberFormat,
     PageOrientation,
     VerticalAlign,
-    ISectionOptions
+    ISectionOptions,
+    HeightRule,
+    HeadingLevel,
+    PageBreak
 } from "docx";
+import { signatureService } from "../signatureService";
+import { SignerType } from "@/types/signatures";
 import { CourseData, Sessione, Partecipante } from "@/types/extraction";
 
 // --- Constants & Styles ---
@@ -35,6 +40,67 @@ const YELLOW_HIGHLIGHT_COLOR = "FFFF00"; // Yellow for mandatory fields
 export class ProgrammaticDocxGenerator {
 
     // --- HELPERS ---
+
+    private createHeader(data: CourseData, imageBuffer?: ArrayBuffer | null): Paragraph {
+        if (imageBuffer) {
+            return new Paragraph({
+                children: [
+                    new ImageRun({
+                        data: imageBuffer,
+                        transformation: { width: 600, height: 60 },
+                        type: "png"
+                    })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 200 }
+            });
+        }
+        return new Paragraph({
+            children: [
+                new TextRun({ text: (data.ente.nome || "AK GROUP s.r.l.").toUpperCase(), bold: true, size: 28, font: FONT_FAMILY }),
+                new TextRun({ text: "\nEnte Accreditato Regione Lombardia", size: 20, font: FONT_FAMILY })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 }
+        });
+    }
+
+    private createCourseInfoTable(data: CourseData, moduleId?: string): Table {
+        const rows = [
+            this.createDataRowSimple("Titolo Corso:", data.corso.titolo),
+            this.createDataRowSimple("ID Corso:", data.corso.id),
+        ];
+
+        if (moduleId) {
+            rows.push(this.createDataRowSimple("ID Modulo:", moduleId));
+        }
+
+        rows.push(this.createDataRowSimple("Sede:", data.sede.nome + " - " + data.sede.indirizzo));
+        rows.push(this.createDataRowSimple("Periodo:", `Dal ${data.corso.data_inizio} Al ${data.corso.data_fine}`));
+
+        return new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: rows,
+            borders: this.getSimpleBorders()
+        });
+    }
+
+    private createDataRowSimple(label: string, value: string): TableRow {
+        return new TableRow({
+            children: [
+                new TableCell({
+                    children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
+                    width: { size: 30, type: WidthType.PERCENTAGE },
+                    shading: { fill: "E0E0E0" }
+                }),
+                new TableCell({
+                    children: [new Paragraph({ children: [new TextRun({ text: value })] })],
+                    width: { size: 70, type: WidthType.PERCENTAGE }
+                })
+            ]
+        });
+    }
+
     private splitSessionByLunch(session: Sessione): Sessione[] {
         if (!session.ora_inizio || !session.ora_fine) return [session];
         const [startH, startM] = session.ora_inizio.split(':').map(Number);
@@ -74,6 +140,185 @@ export class ProgrammaticDocxGenerator {
             throw new Error(`Failed to fetch image: ${url}`);
         }
         return await response.arrayBuffer();
+    }
+
+    // --- REGISTRO CARTACEO HEAD GENERATION ---
+    public async generateRegistroCartaceoHead(data: CourseData): Promise<Blob> {
+        const titleStyle = {
+            bold: true,
+            size: 28, // 14pt
+            font: FONT_FAMILY
+        };
+        const labelStyle = {
+            bold: true,
+            size: 24, // 12pt
+            font: FONT_FAMILY
+        };
+        const valueStyle = {
+            size: 24, // 12pt
+            font: FONT_FAMILY
+        };
+
+        const doc = new Document({
+            sections: [{
+                properties: {
+                    page: {
+                        margin: {
+                            top: "1.5cm",
+                            bottom: "1.5cm",
+                            left: "1.5cm",
+                            right: "1.5cm"
+                        }
+                    }
+                },
+                children: [
+                    // TITLE
+                    new Paragraph({
+                        children: [new TextRun({ text: "REGISTRO DIDATTICO E DI PRESENZA", ...titleStyle, size: 32 })],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 400 }
+                    }),
+
+                    // COURSE INFO
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "ID PROGETTO N° ", ...labelStyle }),
+                            new TextRun({ text: data.corso.id, ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "ID SEZIONE N° ", ...labelStyle }),
+                            new TextRun({ text: data.moduli[0]?.id_sezione || "", ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "TITOLO EDIZIONE: ", ...labelStyle }),
+                            new TextRun({ text: data.corso.titolo, ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "TIPO Formazione Permanente", ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "SEDE DEL CORSO: ", ...labelStyle }),
+                            new TextRun({ text: data.sede.indirizzo, ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+
+                    // DATES - Tabbed layout
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "DATA INIZIO      ", ...labelStyle }),
+                            new TextRun({ text: data.corso.data_inizio, ...valueStyle }),
+                            new TextRun({ text: "\tDATA TERMINE         ", ...labelStyle }),
+                            new TextRun({ text: data.corso.data_fine, ...valueStyle })
+                        ],
+                        tabStops: [
+                            { type: "left", position: 5000 }
+                        ],
+                        spacing: { after: 100 }
+                    }),
+
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "DURATA DEL CORSO  ", ...labelStyle }),
+                            new TextRun({ text: (data.corso.ore_totali || "") + "h", ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "OPERATORE: ", ...labelStyle }),
+                            new TextRun({ text: data.ente.nome, ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "INDIRIZZO: ", ...labelStyle }),
+                            new TextRun({ text: data.ente.indirizzo, ...valueStyle })
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "DOCENTE: ", ...labelStyle }),
+                            new TextRun({ text: data.trainer.nome_completo, ...valueStyle })
+                        ],
+                        spacing: { after: 400 }
+                    }),
+
+                    // VIDIMAZIONE
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "REGISTRO COMPOSTO DA NUMERO PAGINE\t", ...labelStyle }),
+                            new TextRun({ text: data.moduli.reduce((acc, m) => acc + m.sessioni.filter(s => !s.is_fad).length, 0).toString(), ...valueStyle })
+                        ],
+                        tabStops: [{ type: "left", position: 6000 }],
+                        spacing: { after: 200 }
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "VIDIMATO IN DATA\t", ...labelStyle }),
+                            new TextRun({ text: data.moduli.flatMap(m => m.sessioni).filter(s => !s.is_fad).pop()?.data_completa || "", ...valueStyle })
+                        ],
+                        tabStops: [{ type: "left", position: 6000 }],
+                        spacing: { after: 800 }
+                    }),
+
+                    // PARTECIPANTI LIST
+                    new Paragraph({
+                        children: [new TextRun({ text: "Elenco partecipanti", ...labelStyle })],
+                        spacing: { after: 200 }
+                    }),
+
+                    // Use a table for better alignment of numbers and names
+                    this.createParticipantsListTable(data.partecipanti),
+                ]
+            }]
+        });
+
+        return await Packer.toBlob(doc);
+    }
+
+    private createParticipantsListTable(partecipanti: Partecipante[]): Table {
+        const rows: TableRow[] = [];
+        for (let i = 0; i < 20; i++) {
+            const p = partecipanti[i];
+            const name = p ? `${p.cognome} ${p.nome}` : "";
+            rows.push(new TableRow({
+                children: [
+                    new TableCell({
+                        children: [new Paragraph({ text: (i + 1).toString(), alignment: AlignmentType.RIGHT })],
+                        width: { size: 5, type: WidthType.PERCENTAGE },
+                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                    }),
+                    new TableCell({
+                        children: [new Paragraph({
+                            children: [new TextRun({ text: "\t" + name, size: 24, font: FONT_FAMILY })], // Tab for spacing
+                            tabStops: [{ type: "left", position: 300 }]
+                        })],
+                        width: { size: 95, type: WidthType.PERCENTAGE },
+                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                    })
+                ]
+            }));
+        }
+        return new Table({
+            rows: rows,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE } }
+        });
     }
 
     // --- MODELLO A GENERATION ---
@@ -903,7 +1148,23 @@ export class ProgrammaticDocxGenerator {
         if (!start || !end) return 0;
         const [sh, sm] = start.split(':').map(Number);
         const [eh, em] = end.split(':').map(Number);
-        const diff = (eh * 60 + em) - (sh * 60 + sm);
+
+        const startMinutes = sh * 60 + (sm || 0);
+        const endMinutes = eh * 60 + (em || 0);
+
+        let diff = endMinutes - startMinutes;
+
+        // Lunch break logic (13:00 - 14:00)
+        const lunchStart = 13 * 60;
+        const lunchEnd = 14 * 60;
+
+        if (startMinutes < lunchEnd && endMinutes > lunchStart) {
+            const overlapStart = Math.max(startMinutes, lunchStart);
+            const overlapEnd = Math.min(endMinutes, lunchEnd);
+            const overlap = Math.max(0, overlapEnd - overlapStart);
+            diff -= overlap;
+        }
+
         return diff > 0 ? diff / 60 : 0;
     }
 
@@ -1291,6 +1552,204 @@ export class ProgrammaticDocxGenerator {
                 })
             ],
             borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE } }
+        });
+    }
+
+
+    // --- REGISTRO PRESENZA CARTACEO (PROGRAMMATIC) ---
+
+
+
+    public async generateRegistroPresenzaCompleto(data: CourseData, sessions: Sessione[], moduleId: string): Promise<Blob> {
+        let headerImageBuffer: ArrayBuffer | null = null;
+        try {
+            headerImageBuffer = await this.fetchImage('/Templates_standard/86e2d75c-adbe-4e9d-8afa-25b423f5e444.png');
+        } catch (e) {
+            console.error("Could not load header image", e);
+        }
+
+        const sections = [];
+
+        // 1. HEAD SECTION
+        sections.push({
+            properties: {
+                page: {
+                    margin: { top: 567, bottom: 567, left: 850, right: 567 },
+                },
+            },
+            children: [
+                this.createHeader(data, headerImageBuffer),
+                new Paragraph({
+                    children: [new TextRun({ text: "REGISTRO PRESENZE", bold: true, size: 28, font: FONT_FAMILY })],
+                    heading: HeadingLevel.HEADING_1,
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 400, after: 200 },
+                }),
+                new Paragraph({
+                    children: [new TextRun({ text: "CORSO DI FORMAZIONE", bold: true, size: 28, font: FONT_FAMILY })],
+                    heading: HeadingLevel.HEADING_2,
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 400 },
+                }),
+                this.createCourseInfoTable(data),
+                new Paragraph({ spacing: { before: 400 } }),
+                new Paragraph({
+                    children: [new TextRun({ text: "ELENCO PARTECIPANTI", bold: true, size: 24, font: FONT_FAMILY })],
+                    heading: HeadingLevel.HEADING_3,
+                    spacing: { after: 200 },
+                }),
+                this.createParticipantsTable(data),
+                new Paragraph({ children: [new PageBreak()] })
+            ]
+        });
+
+        // 2. DAILY PAGES SECTIONS
+        sessions.forEach((session) => {
+            sections.push({
+                properties: {
+                    page: {
+                        margin: { top: 567, bottom: 567, left: 850, right: 567 },
+                    },
+                },
+                children: [
+                    this.createHeader(data, headerImageBuffer),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: `DATA: ${session.data_completa || (session as any).data || `${session.giorno}/${session.mese_numero}/${session.anno}`}`, bold: true, size: 28 }),
+                            new TextRun({ text: `   ORARIO: ${session.ora_inizio} - ${session.ora_fine}`, size: 28 }),
+                        ],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 200, after: 100 }
+                    }),
+                    new Paragraph({ text: `MODULO: ${moduleId}`, alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+
+                    this.createDailySignaturesTable(data, session),
+
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "NOTE: __________________________________________________________________________________", size: 20 })
+                        ],
+                        spacing: { before: 300 }
+                    }),
+                    new Paragraph({ children: [new PageBreak()] })
+                ]
+            });
+        });
+
+        const doc = new Document({
+            sections: sections
+        });
+
+        return await Packer.toBlob(doc);
+    }
+
+    public async generateRegistroCartaceoPaginaGiorno(data: CourseData, session: Sessione, moduleId: string): Promise<Blob> {
+        let headerImageBuffer: ArrayBuffer | null = null;
+        try {
+            headerImageBuffer = await this.fetchImage('/Templates_standard/86e2d75c-adbe-4e9d-8afa-25b423f5e444.png');
+        } catch (e) {
+            console.error("Could not load header image", e);
+        }
+
+        const doc = new Document({
+            sections: [{
+                properties: {
+                    page: {
+                        margin: {
+                            top: 567,
+                            bottom: 567,
+                            left: 850,
+                            right: 567,
+                        },
+                    },
+                },
+                children: [
+                    this.createHeader(data, headerImageBuffer),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: `DATA: ${session.data_completa || (session as any).data || `${session.giorno}/${session.mese_numero}/${session.anno}`}`, bold: true, size: 28 }),
+                            new TextRun({ text: `   ORARIO: ${session.ora_inizio} - ${session.ora_fine}`, size: 28 }),
+                        ],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 200, after: 100 }
+                    }),
+                    new Paragraph({ text: `MODULO: ${moduleId}`, alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+                    new Paragraph({
+                        text: `ARGOMENTO: ${session.argomento || "Lezione"}`,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 400 }
+                    }),
+                    this.createDailySignaturesTable(data, session),
+                    new Paragraph({ spacing: { before: 600 } }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "IL DOCENTE", bold: true, size: 24 }),
+                            new TextRun({ text: "\n\n__________________________" })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    })
+                ]
+            }]
+        });
+        return await Packer.toBlob(doc);
+    }
+
+
+    private createDailySignaturesTable(data: CourseData, session: Sessione): Table {
+        const headerColor = "E0E0E0";
+        const rows = [
+            new TableRow({
+                tableHeader: true,
+                children: [
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Cognome e Nome", bold: true, size: 20 })] })], shading: { fill: headerColor } }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Entrata", bold: true, size: 20 })] })], shading: { fill: headerColor } }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Firma Entrata", bold: true, size: 20 })] })], shading: { fill: headerColor } }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Uscita", bold: true, size: 20 })] })], shading: { fill: headerColor } }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Firma Uscita", bold: true, size: 20 })] })], shading: { fill: headerColor } }),
+                ],
+            }),
+        ];
+
+        data.partecipanti.forEach((p) => {
+            rows.push(
+                new TableRow({
+                    children: [
+                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${p.cognome} ${p.nome}`, size: 20 })] })] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                    ]
+                })
+            );
+        });
+
+        // Fill to at least 15 rows if few participants
+        if (rows.length < 15) {
+            for (let i = rows.length; i < 15; i++) {
+                rows.push(new TableRow({
+                    children: [
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                    ]
+                }));
+            }
+        }
+
+        return new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: rows,
+            borders: {
+                top: { style: BorderStyle.SINGLE, size: 1 },
+                bottom: { style: BorderStyle.SINGLE, size: 1 },
+                left: { style: BorderStyle.SINGLE, size: 1 },
+                right: { style: BorderStyle.SINGLE, size: 1 },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1 },
+            }
         });
     }
 
@@ -2272,5 +2731,304 @@ export class ProgrammaticDocxGenerator {
             borders: this.getSimpleBorders()
         });
     }
+
+
+    // --- VERBALE AMMISSIONE GENERATION ---
+    public async generateVerbaleAmmissione(data: CourseData): Promise<Blob> {
+        // 1. Fetch Signatures
+        // "Presidente" -> Team Leader
+        // "Consiglio Docenti" -> Docente (Trainer)
+        // Try to find a signature for Team Leader. First look for "Direttore" or generic "Team Leader".
+        let teamLeaderSignature = await this.fetchSignatureImage('team_leader');
+
+        // If no explicit team leader signature found, try to use the director's signature if available? 
+        // User explicitly asked for "PNG DEL TEAM LEADER". We assume it's stored under 'team_leader' type.
+
+        let docenteSignature: ArrayBuffer | null = null;
+        if (data.trainer && data.trainer.nome_completo) {
+            docenteSignature = await this.fetchSignatureImage('docente', data.trainer.nome_completo);
+        }
+        if (!docenteSignature) {
+            // Fallback to any docente signature? Or leave blank.
+            docenteSignature = await this.fetchSignatureImage('docente');
+        }
+
+        // 2. Prepare Data
+        // Sort participants alphabetically
+        const sortedPartecipanti = [...data.partecipanti].sort((a, b) =>
+            `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`)
+        );
+
+        // Page 1 Rows (Target 10)
+        const rowsPage1Count = 10;
+        const studentsPage1 = sortedPartecipanti.slice(0, rowsPage1Count);
+
+        // Page 2 Rows (Target 12)
+        const rowsPage2Count = 12;
+        const studentsPage2 = sortedPartecipanti.slice(rowsPage1Count, rowsPage1Count + rowsPage2Count);
+
+
+        // Find last session date
+        const allSessions = data.moduli.flatMap(m => m.sessioni).sort((a, b) => {
+            const da = new Date(a.data_completa.split('/').reverse().join('-'));
+            const db = new Date(b.data_completa.split('/').reverse().join('-'));
+            return da.getTime() - db.getTime();
+        });
+        const lastDate = allSessions.length > 0 ? allSessions[allSessions.length - 1].data_completa : new Date().toLocaleDateString('it-IT');
+
+        const doc = new Document({
+            sections: [{
+                properties: {
+                    page: {
+                        size: { orientation: PageOrientation.PORTRAIT, width: "210mm", height: "297mm" }, // A4
+                        margin: {
+                            top: "20mm",
+                            right: "20mm",
+                            bottom: "20mm",
+                            left: "20mm"
+                        }
+                    }
+                },
+                children: [
+                    // --- PAGE 1 ---
+                    // Title
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `VERBALE SCRUTINIO AMMISSIONE ALLA VERIFICA FINALE CORSO ID ${data.corso.id}`,
+                                bold: true,
+                                font: "Times New Roman",
+                                size: 28 // 14pt (28 half-points)
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 400 }
+                    }),
+
+                    // Intro
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: `In data ${lastDate} alle ore 09:00 presso la sede accreditata di`, font: "Times New Roman", size: 22 }),
+                        ],
+                        spacing: { after: 100 }
+                    }),
+                    // Lines
+                    new Paragraph({
+                        children: [new TextRun({ text: `${data.ente.accreditato?.via || data.ente.indirizzo} - ${data.ente.accreditato?.comune || "Comune"} - ${data.ente.accreditato?.cap || "CAP"}`, font: "Times New Roman", size: 22 })],
+                        border: { bottom: { style: BorderStyle.SINGLE, space: 1, color: "000000" } },
+                        spacing: { after: 50 }
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: "(Via - Comune - CAP)", size: 16, font: "Times New Roman" })],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 }
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: `dell'ente accreditato ${data.ente.nome}`, font: "Times New Roman", size: 22 })],
+                        border: { bottom: { style: BorderStyle.SINGLE, space: 1, color: "000000" } },
+                        spacing: { after: 50 }
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: "dell'ente accreditato", size: 16, font: "Times New Roman" })],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 }
+                    }),
+
+                    new Paragraph({
+                        children: [new TextRun({ text: `si è riunito il consiglio dei docenti del corso ${data.corso.titolo}`, font: "Times New Roman", size: 22 })],
+                        border: { bottom: { style: BorderStyle.SINGLE, space: 1, color: "000000" } },
+                        spacing: { after: 50 }
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: "(titolo)", size: 16, font: "Times New Roman" })],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 }
+                    }),
+
+                    new Paragraph({
+                        children: [new TextRun({ text: "per valutare l'ammissione alle prove di verifica finali degli allievi che hanno frequentato almeno il 70% delle ore del corso.", font: "Times New Roman", size: 22 })],
+                        spacing: { after: 200 }
+                    }),
+
+                    new Paragraph({
+                        children: [new TextRun({ text: "Il Consiglio dei docenti, constatata la validità dell'adunanza, la dichiara aperta e, prima di dare inizio alle operazioni di scrutinio, nomina un Presidente e un segretario verbalizzante. A seguito delle valutazioni dei docenti si dichiara che:", font: "Times New Roman", size: 22 })],
+                        spacing: { after: 200 }
+                    }),
+
+                    // Bullet List
+                    new Paragraph({
+                        children: [new TextRun({ text: "la progettazione didattico-educativa si è rivelata rispondente alle reali possibilità ed esigenze degli allievi.", font: "Times New Roman", size: 22 })],
+                        bullet: { level: 0 }
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: "gli obiettivi e le competenze fissate in sede di progettazione del percorso formativo possono considerarsi generalmente raggiunti.", font: "Times New Roman", size: 22 })],
+                        bullet: { level: 0 },
+                        spacing: { after: 200 }
+                    }),
+
+                    new Paragraph({
+                        children: [new TextRun({ text: "In relazione a quanto detto, il Consiglio delibera di approvare all'unanimità il presente verbale e ammette agli esami finali i seguenti allievi per il conseguimento dell’attestato di abilità e conoscenze.", font: "Times New Roman", size: 22 })],
+                        spacing: { after: 400 }
+                    }),
+
+                    // TABLE PAGE 1
+                    this.createAmmissioneTable(studentsPage1, rowsPage1Count),
+
+                    // PAGE BREAK
+                    new Paragraph({ children: [], pageBreakBefore: true }),
+
+                    // --- PAGE 2 ---
+                    // Table Continuation
+                    this.createAmmissioneTable(studentsPage2, rowsPage2Count),
+
+                    new Paragraph({
+                        children: [new TextRun({ text: `Non avendo i docenti nulla da eccepire, il presidente dichiara sciolta la seduta alle ore 18:00.`, font: "Times New Roman", size: 22 })],
+                        spacing: { before: 400, after: 200 }
+                    }),
+
+                    new Paragraph({
+                        children: [new TextRun({ text: "Il presente verbale viene letto e approvato. Luogo e data", font: "Times New Roman", size: 22 })],
+                        spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: `${data.ente.accreditato?.comune || "Milano"}, ${new Date().toLocaleDateString('it-IT')}`, font: "Times New Roman", size: 22, bold: true })],
+                        border: { bottom: { style: BorderStyle.SINGLE, space: 1, color: "000000" } }, // approximated line with text
+                        spacing: { after: 800 }
+                    }),
+
+                    // Signatures
+                    new Table({
+                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE } },
+                        rows: [
+                            new TableRow({
+                                children: [
+                                    new TableCell({
+                                        children: [
+                                            new Paragraph({ children: [new TextRun({ text: "IL PRESIDENTE", bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER }),
+                                            new Paragraph({ children: [new TextRun({ text: "(Team Leader)", font: "Times New Roman", size: 18 })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+                                            teamLeaderSignature ? new Paragraph({
+                                                children: [
+                                                    new ImageRun({
+                                                        data: teamLeaderSignature,
+                                                        transformation: { width: 150, height: 60 },
+                                                        type: "png"
+                                                    })
+                                                ],
+                                                alignment: AlignmentType.CENTER
+                                            }) : new Paragraph({ text: "[Firma Presidente]", alignment: AlignmentType.CENTER })
+                                        ],
+                                    }),
+                                    new TableCell({
+                                        children: [
+                                            new Paragraph({ children: [new TextRun({ text: "IL CONSIGLIO DEI DOCENTI", bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+                                            docenteSignature ? new Paragraph({
+                                                children: [
+                                                    new ImageRun({
+                                                        data: docenteSignature,
+                                                        transformation: { width: 150, height: 60 },
+                                                        type: "png"
+                                                    })
+                                                ],
+                                                alignment: AlignmentType.CENTER
+                                            }) : new Paragraph({ text: "[Firma Docente]", alignment: AlignmentType.CENTER })
+                                        ],
+                                    })
+                                ]
+                            })
+                        ]
+                    })
+                ]
+            }]
+        });
+
+        return await Packer.toBlob(doc);
+    }
+
+    private createAmmissioneTable(participants: Partecipante[], targetRows: number): Table {
+        const headerRow = new TableRow({
+            children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Allievo", bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 40, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Ammissione / non Ammissione", bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 35, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Note", bold: true, font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+            ]
+        });
+
+        const rows: TableRow[] = [];
+
+        // Add participant rows
+        participants.forEach(p => {
+            rows.push(new TableRow({
+                height: { value: 567, rule: HeightRule.ATLEAST },
+                children: [
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${p.cognome} ${p.nome}`, font: "Times New Roman", size: 22 })] })], verticalAlign: AlignmentType.CENTER }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Ammesso", font: "Times New Roman", size: 22 })], alignment: AlignmentType.CENTER })], verticalAlign: AlignmentType.CENTER }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "", font: "Times New Roman", size: 22 })] })], verticalAlign: AlignmentType.CENTER }),
+                ]
+            }));
+        });
+
+        // Fill remaining
+        const remaining = targetRows - participants.length;
+        for (let i = 0; i < remaining; i++) {
+            rows.push(new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "", font: "Times New Roman", size: 22 })] })], verticalAlign: AlignmentType.CENTER }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "", font: "Times New Roman", size: 22 })] })], verticalAlign: AlignmentType.CENTER }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "", font: "Times New Roman", size: 22 })] })], verticalAlign: AlignmentType.CENTER }),
+                ]
+            }));
+        }
+
+        return new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [headerRow, ...rows],
+            borders: {
+                top: { style: BorderStyle.SINGLE, size: 1 },
+                bottom: { style: BorderStyle.SINGLE, size: 1 },
+                left: { style: BorderStyle.SINGLE, size: 1 },
+                right: { style: BorderStyle.SINGLE, size: 1 },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1 },
+            }
+        });
+    }
+
+    private async fetchSignatureImage(type: SignerType, name?: string): Promise<ArrayBuffer | null> {
+        try {
+            // This runs in browser usually?
+            // If in NodeJS (test), localstorage might fail. Use try/catch.
+            const allSignatures = signatureService.getSignaturesByType(type);
+
+            let match = null;
+            if (name) {
+                // Try fuzzy match or exact
+                match = allSignatures.find(s => name.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(name.toLowerCase()));
+            }
+
+            // If no name specified or no match, take first of type? 
+            if (!match && !name && allSignatures.length > 0) {
+                match = allSignatures[0];
+            }
+
+            if (match) {
+                return this.base64ToBuffer(match.imageUrl);
+            }
+        } catch (e) {
+            console.warn(`Failed to fetch signature for ${type} ${name || ''}`, e);
+        }
+        return null;
+    }
+
+    private base64ToBuffer(base64: string): ArrayBuffer {
+        const binaryString = window.atob(base64.split(',')[1]);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
 
 }

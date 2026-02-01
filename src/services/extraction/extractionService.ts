@@ -1,5 +1,6 @@
 import { geminiClient, type RawExtractionResult } from './geminiClient';
 import type { ExtractionResult, Modulo, Sessione } from '@/types/extraction';
+import { RuleBasedExtractor } from './ruleBasedExtractor';
 
 export type ExtractionMode = 'standard' | 'multi-step' | 'double-check';
 
@@ -261,12 +262,14 @@ function compareResults(result1: ExtractionResult, result2: ExtractionResult): {
 }
 
 export class ExtractionService {
+  private ruleExtractor = new RuleBasedExtractor();
+
   /**
    * Main extraction method - routes to appropriate strategy based on mode
    * Accepts structured input with 3 separate blocks
    */
-  async extract(input: StructuredInput | string, mode: ExtractionMode): Promise<ExtractionResponse> {
-    if (!geminiClient.hasApiKey()) {
+  async extract(input: StructuredInput | string, mode: ExtractionMode | 'rule-based'): Promise<ExtractionResponse> {
+    if (mode !== 'rule-based' && !geminiClient.hasApiKey()) {
       throw new Error('Gemini API Key non configurata. Vai nelle Impostazioni per inserirla.');
     }
 
@@ -277,6 +280,10 @@ export class ExtractionService {
 
     // Format input for AI
     const formattedInput = formatInputForAI(structuredInput);
+
+    if (mode === 'rule-based') {
+      return this.extractRuleBased(structuredInput);
+    }
 
     switch (mode) {
       case 'standard':
@@ -349,6 +356,27 @@ export class ExtractionService {
       warnings: warnings.length > 0 ? warnings : undefined,
       matchScore: Math.round(score * 100)
     };
+  }
+
+  /**
+   * Rule-based extraction (No AI)
+   */
+  private async extractRuleBased(input: StructuredInput): Promise<ExtractionResponse> {
+    try {
+      const result = this.ruleExtractor.parse(input);
+      return {
+        result,
+        confidence: 'reliable',
+        matchScore: 100
+      };
+    } catch (e) {
+      console.error("Rule extraction failed", e);
+      return {
+        result: {} as any, // Should handle error better
+        confidence: 'review_needed',
+        warnings: ['Estrazione automatica fallita: ' + (e as Error).message]
+      };
+    }
   }
 }
 

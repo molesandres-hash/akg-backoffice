@@ -36,7 +36,11 @@ const systemTemplateLabels: Record<string, string> = {
   verbale_scrutinio: 'Verbale Scrutinio',
 };
 
-export function Step3TemplateSelect() {
+interface Step3Props {
+  isEmbedded?: boolean;
+}
+
+export function Step3TemplateSelect({ isEmbedded = false }: Step3Props) {
   const { selectedTemplateIds, toggleTemplateSelection, nextStep, prevStep } = useWizardStore();
   const [templates, setTemplates] = useState<UserTemplate[]>([]);
   const [systemTemplates, setSystemTemplates] = useState<SystemTemplate[]>([]);
@@ -107,7 +111,7 @@ export function Step3TemplateSelect() {
                 {systemTemplates.length} configurati
               </Badge>
             </h3>
-            
+
             {hasSystemTemplates ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {systemTemplates.map((template) => (
@@ -149,7 +153,7 @@ export function Step3TemplateSelect() {
                 {templates.length} disponibili
               </Badge>
             </h3>
-            
+
             {hasUserTemplates ? (
               <div className="space-y-6">
                 {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
@@ -157,18 +161,18 @@ export function Step3TemplateSelect() {
                     <Badge className={cn("font-normal mb-3", categoryColors[category])}>
                       {categoryLabels[category]} ({categoryTemplates.length})
                     </Badge>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {categoryTemplates.map((template) => {
                         const isSelected = selectedTemplateIds.includes(template.id!);
-                        
+
                         return (
                           <Card
                             key={template.id}
                             className={cn(
                               "cursor-pointer transition-all duration-200 hover:shadow-md",
-                              isSelected 
-                                ? "ring-2 ring-accent bg-accent/5" 
+                              isSelected
+                                ? "ring-2 ring-accent bg-accent/5"
                                 : "hover:bg-secondary/50"
                             )}
                             onClick={() => toggleTemplateSelection(template.id!)}
@@ -217,20 +221,22 @@ export function Step3TemplateSelect() {
         </div>
       )}
 
-      <div className="flex justify-between pt-4">
-        <Button variant="outline" onClick={prevStep} className="gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Indietro
-        </Button>
-        <Button 
-          onClick={handleContinue} 
-          disabled={!canContinue}
-          className="gap-2"
-        >
-          Avanti
-          <ArrowRight className="w-4 h-4" />
-        </Button>
-      </div>
+      {!isEmbedded && (
+        <div className="flex justify-between pt-4">
+          <Button variant="outline" onClick={prevStep} className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Indietro
+          </Button>
+          <Button
+            onClick={handleContinue}
+            disabled={!canContinue}
+            className="gap-2"
+          >
+            Avanti
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

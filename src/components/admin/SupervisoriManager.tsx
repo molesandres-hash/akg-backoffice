@@ -7,15 +7,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Star, Loader2, Shield } from 'lucide-react';
-import { 
-  getAllSupervisori, 
-  addSupervisore, 
-  updateSupervisore, 
-  deleteSupervisore, 
+import {
+  getAllSupervisori,
+  addSupervisore,
+  updateSupervisore,
+  deleteSupervisore,
   setDefaultSupervisore,
-  type DefaultSupervisore 
+  type DefaultSupervisore
 } from '@/db/templateDb';
 import { toast } from 'sonner';
+import { SignatureField } from '@/components/signatures/SignatureField';
 
 const emptySupervisore: Omit<DefaultSupervisore, 'id'> = {
   nome: '',
@@ -182,6 +183,13 @@ export function SupervisoriManager() {
                     Imposta come predefinito
                   </Label>
                 </div>
+
+                {(formData.nome && formData.cognome) && (
+                  <SignatureField
+                    name={`${formData.nome} ${formData.cognome}`}
+                    type="team_leader"
+                  />
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>

@@ -1,10 +1,10 @@
 import { GoogleGenerativeAI, type GenerationConfig } from '@google/generative-ai';
-import { 
-  SYSTEM_INSTRUCTION, 
+import {
+  SYSTEM_INSTRUCTION,
   EXTRACTION_SCHEMA,
   STEP1_SCHEMA,
   STEP2_SCHEMA,
-  STEP3_SCHEMA 
+  STEP3_SCHEMA
 } from './extractionConfig';
 import {
   STEP_1_SYSTEM,
@@ -16,7 +16,7 @@ import {
 } from './extractionSteps';
 
 const API_KEY_STORAGE_KEY = 'gemini_api_key';
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-3-flash-preview';
 
 export interface RawExtractionResult {
   corso?: {
@@ -162,12 +162,12 @@ export class GeminiClient {
 
   private initClient(): GoogleGenerativeAI {
     if (this.client) return this.client;
-    
+
     const apiKey = this.getApiKey();
     if (!apiKey) {
       throw new Error('Gemini API Key non configurata. Vai nelle Impostazioni per inserirla.');
     }
-    
+
     this.client = new GoogleGenerativeAI(apiKey);
     return this.client;
   }
@@ -179,7 +179,7 @@ export class GeminiClient {
     schema: object
   ): Promise<RawExtractionResult> {
     const client = this.initClient();
-    
+
     const model = client.getGenerativeModel({
       model: MODEL_NAME,
       systemInstruction,
@@ -190,11 +190,26 @@ export class GeminiClient {
     });
 
     const fullPrompt = `${prompt}\n\n---\nDATA INPUT:\n${input}`;
-    
+
     const result = await model.generateContent(fullPrompt);
     const response = result.response;
-    const text = response.text();
-    
+    let text = '';
+
+    try {
+      text = response.text();
+    } catch (e) {
+      console.error('Error getting text from response:', e);
+      console.log('Full response object:', JSON.stringify(result, null, 2));
+    }
+
+    if (!text) {
+      console.error('Gemini returned empty text.');
+      if (response.promptFeedback) {
+        console.error('Prompt Feedback:', JSON.stringify(response.promptFeedback, null, 2));
+      }
+      return {} as RawExtractionResult;
+    }
+
     try {
       return JSON.parse(text);
     } catch (e) {
@@ -207,11 +222,18 @@ export class GeminiClient {
    * Standard extraction - single API call for all data
    */
   async extractStandard(input: string): Promise<RawExtractionResult> {
-    const prompt = `Analizza i seguenti dati e estrai tutte le informazioni sul corso, moduli, partecipanti e personale.
+    const prompt = `Analizza i seguenti dati e estrai tutte le informazioni.
     
-RICORDA: 
-- Dai PRIORITÀ ASSOLUTA agli ID Corso e ID Sezione che trovi nella sezione "DATI MODULI (FONTE DI VERITÀ PER ID)"
-- IGNORA gli ID presenti nella sezione "DATI CORSO PRINCIPALE" se differiscono da quelli nei moduli`;
+GERARCHIA DELLE FONTI PER ID (CORSO E SEZIONE):
+1. FONTE PRIMARIA (VINCOLANTE): La sezione/tabella "DATI MODULI".
+   - Se un ID è presente qui, DEVE essere usato. 
+   - Questo vale ANCHE se c'è un solo modulo.
+   - Questo vale ANCHE se differisce da altri ID.
+
+2. FONTE SECONDARIA (SOLO SE MANCANO IN MODULI): La sezione "DATI CORSO PRINCIPALE".
+   - Usa questi ID SOLO se non ne trovi nessuno nella sezione Moduli.
+
+OBIETTIVO: Estrai SEMPRE un ID Corso e un ID Sezione se presenti nel testo, dando priorità alla fonte Moduli.`;
     return this.generateContent(SYSTEM_INSTRUCTION, prompt, input, EXTRACTION_SCHEMA);
   }
 

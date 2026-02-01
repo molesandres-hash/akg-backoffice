@@ -7,10 +7,8 @@ interface WizardStepperProps {
 }
 
 const steps = [
-  { label: 'Input AI', icon: Sparkles, description: 'Incolla i dati grezzi' },
-  { label: 'Revisione', icon: PenLine, description: 'Correggi e completa' },
-  { label: 'Template', icon: FileText, description: 'Scegli il modello' },
-  { label: 'Genera', icon: FileDown, description: 'Scarica i documenti' },
+  { label: 'Input Dati', icon: Sparkles, description: 'Carica i dati' },
+  { label: 'Gestione Completa', icon: PenLine, description: 'Revisione e Export' },
 ];
 
 export function WizardStepper({ currentStep, onStepClick }: WizardStepperProps) {

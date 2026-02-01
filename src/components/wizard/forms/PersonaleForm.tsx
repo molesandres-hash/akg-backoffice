@@ -4,23 +4,23 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWizardStore } from '@/store/wizardStore';
-import { 
-  getAllDocenti, 
+import {
+  getAllDocenti,
   getAllSupervisori,
   getAllResponsabiliCertificazione,
-  type DefaultDocente, 
+  type DefaultDocente,
   type DefaultSupervisore,
-  type DefaultResponsabileCertificazione 
+  type DefaultResponsabileCertificazione
 } from '@/db/templateDb';
 
 export function PersonaleForm() {
-  const { 
-    courseData, 
-    updateTrainer, 
-    updateTutor, 
+  const {
+    courseData,
+    updateTrainer,
+    updateTutor,
     updateDirettore,
     updateSupervisore,
-    updateResponsabileCertificazione 
+    updateResponsabileCertificazione
   } = useWizardStore();
   const { trainer, tutor, direttore, supervisore, responsabile_certificazione } = courseData;
 
@@ -28,16 +28,91 @@ export function PersonaleForm() {
   const [supervisoriList, setSupervisoriList] = useState<DefaultSupervisore[]>([]);
   const [responsabiliList, setResponsabiliList] = useState<DefaultResponsabileCertificazione[]>([]);
 
+  // Controlled states for Select
+  const [selectedDocenteId, setSelectedDocenteId] = useState<string>('');
+  const [selectedSupervisoreId, setSelectedSupervisoreId] = useState<string>('');
+  const [selectedResponsabileId, setSelectedResponsabileId] = useState<string>('');
+
   useEffect(() => {
-    getAllDocenti().then(setDocentiList);
-    getAllSupervisori().then(setSupervisoriList);
-    getAllResponsabiliCertificazione().then(setResponsabiliList);
+    // Load Docenti
+    getAllDocenti().then(list => {
+      setDocentiList(list);
+
+      // 1. Single option auto-select
+      if (list.length === 1 && (!trainer.nome || trainer.nome.trim() === '')) {
+        handleDocenteSelect(String(list[0].id), list);
+        return;
+      }
+
+      // 2. Default auto-select
+      const defaultDocente = list.find(d => d.isDefault);
+      if (defaultDocente && (!trainer.nome || trainer.nome.trim() === '')) {
+        handleDocenteSelect(String(defaultDocente.id), list);
+      } else if (trainer.nome) {
+        // Try to match existing trainer to list
+        const match = list.find(d =>
+          d.nome === trainer.nome && d.cognome === trainer.cognome
+        );
+        if (match) setSelectedDocenteId(String(match.id));
+      }
+    });
+
+    // Load Supervisori
+    getAllSupervisori().then(list => {
+      setSupervisoriList(list);
+
+      // 1. Single option auto-select
+      if (list.length === 1 && (!supervisore?.nome_completo || supervisore.nome_completo.trim() === '')) {
+        handleSupervisoreSelect(String(list[0].id), list);
+        return;
+      }
+
+      // 2. Default auto-select
+      const defaultSup = list.find(s => s.isDefault);
+      if (defaultSup && (!supervisore?.nome_completo || supervisore.nome_completo.trim() === '')) {
+        handleSupervisoreSelect(String(defaultSup.id), list);
+      } else if (supervisore?.nome_completo) {
+        // Try match (simple name match)
+        const match = list.find(s =>
+          `${s.nome} ${s.cognome}` === supervisore.nome_completo
+        );
+        if (match) setSelectedSupervisoreId(String(match.id));
+      }
+    });
+
+    // Load Responsabili
+    getAllResponsabiliCertificazione().then(list => {
+      setResponsabiliList(list);
+
+      // 1. Single option auto-select
+      if (list.length === 1 && (!responsabile_certificazione?.nome_completo || responsabile_certificazione.nome_completo.trim() === '')) {
+        handleResponsabileSelect(String(list[0].id), list);
+        return;
+      }
+
+      // 2. Default auto-select
+      const defaultResp = list.find(r => r.isDefault);
+      if (defaultResp && (!responsabile_certificazione?.nome_completo || responsabile_certificazione.nome_completo.trim() === '')) {
+        handleResponsabileSelect(String(defaultResp.id), list);
+      } else if (responsabile_certificazione?.nome_completo) {
+        // Try match
+        const match = list.find(r =>
+          `${r.nome} ${r.cognome}` === responsabile_certificazione.nome_completo
+        );
+        if (match) setSelectedResponsabileId(String(match.id));
+      }
+    });
   }, []);
 
-  const handleDocenteSelect = (value: string) => {
-    if (value === 'manual') return;
-    const docente = docentiList.find(d => d.id === Number(value));
+  const handleDocenteSelect = (value: string, listStr?: DefaultDocente[]) => {
+    if (value === 'manual') {
+      setSelectedDocenteId('');
+      return;
+    }
+    const list = listStr || docentiList;
+    const docente = list.find(d => d.id === Number(value));
     if (docente) {
+      setSelectedDocenteId(value);
       updateTrainer({
         nome: docente.nome,
         cognome: docente.cognome,
@@ -49,10 +124,15 @@ export function PersonaleForm() {
     }
   };
 
-  const handleSupervisoreSelect = (value: string) => {
-    if (value === 'manual') return;
-    const sup = supervisoriList.find(s => s.id === Number(value));
+  const handleSupervisoreSelect = (value: string, listStr?: DefaultSupervisore[]) => {
+    if (value === 'manual') {
+      setSelectedSupervisoreId('');
+      return;
+    }
+    const list = listStr || supervisoriList;
+    const sup = list.find(s => s.id === Number(value));
     if (sup) {
+      setSelectedSupervisoreId(value);
       updateSupervisore({
         nome_completo: `${sup.nome} ${sup.cognome}`,
         qualifica: sup.qualifica
@@ -60,10 +140,15 @@ export function PersonaleForm() {
     }
   };
 
-  const handleResponsabileSelect = (value: string) => {
-    if (value === 'manual') return;
-    const resp = responsabiliList.find(r => r.id === Number(value));
+  const handleResponsabileSelect = (value: string, listStr?: DefaultResponsabileCertificazione[]) => {
+    if (value === 'manual') {
+      setSelectedResponsabileId('');
+      return;
+    }
+    const list = listStr || responsabiliList;
+    const resp = list.find(r => r.id === Number(value));
     if (resp) {
+      setSelectedResponsabileId(value);
       updateResponsabileCertificazione({
         nome_completo: `${resp.nome} ${resp.cognome}`,
         qualifica: 'Responsabile Certificazione',
@@ -88,7 +173,7 @@ export function PersonaleForm() {
             {docentiList.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Seleziona Docente Predefinito</Label>
-                <Select onValueChange={handleDocenteSelect}>
+                <Select value={selectedDocenteId} onValueChange={(val) => handleDocenteSelect(val)}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Seleziona docente..." />
                   </SelectTrigger>
@@ -109,7 +194,7 @@ export function PersonaleForm() {
                 <Label className="text-xs">Nome</Label>
                 <Input
                   value={trainer.nome}
-                  onChange={(e) => updateTrainer({ 
+                  onChange={(e) => updateTrainer({
                     nome: e.target.value,
                     nome_completo: `${e.target.value} ${trainer.cognome}`.trim()
                   })}
@@ -121,7 +206,7 @@ export function PersonaleForm() {
                 <Label className="text-xs">Cognome</Label>
                 <Input
                   value={trainer.cognome}
-                  onChange={(e) => updateTrainer({ 
+                  onChange={(e) => updateTrainer({
                     cognome: e.target.value,
                     nome_completo: `${trainer.nome} ${e.target.value}`.trim()
                   })}
@@ -130,7 +215,7 @@ export function PersonaleForm() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-1.5">
               <Label className="text-xs">Codice Fiscale</Label>
               <Input
@@ -175,7 +260,7 @@ export function PersonaleForm() {
                 <Label className="text-xs">Nome</Label>
                 <Input
                   value={tutor.nome}
-                  onChange={(e) => updateTutor({ 
+                  onChange={(e) => updateTutor({
                     nome: e.target.value,
                     nome_completo: `${e.target.value} ${tutor.cognome}`.trim()
                   })}
@@ -187,7 +272,7 @@ export function PersonaleForm() {
                 <Label className="text-xs">Cognome</Label>
                 <Input
                   value={tutor.cognome}
-                  onChange={(e) => updateTutor({ 
+                  onChange={(e) => updateTutor({
                     cognome: e.target.value,
                     nome_completo: `${tutor.nome} ${e.target.value}`.trim()
                   })}
@@ -196,7 +281,7 @@ export function PersonaleForm() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-1.5">
               <Label className="text-xs">Codice Fiscale</Label>
               <Input
@@ -269,7 +354,7 @@ export function PersonaleForm() {
             {supervisoriList.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Seleziona Predefinito</Label>
-                <Select onValueChange={handleSupervisoreSelect}>
+                <Select value={selectedSupervisoreId} onValueChange={(val) => handleSupervisoreSelect(val, supervisoriList)}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Seleziona..." />
                   </SelectTrigger>
@@ -316,7 +401,7 @@ export function PersonaleForm() {
           {responsabiliList.length > 0 && (
             <div className="space-y-1.5">
               <Label className="text-xs">Seleziona Predefinito</Label>
-              <Select onValueChange={handleResponsabileSelect}>
+              <Select value={selectedResponsabileId} onValueChange={(val) => handleResponsabileSelect(val, responsabiliList)}>
                 <SelectTrigger className="h-9 max-w-md">
                   <SelectValue placeholder="Seleziona responsabile..." />
                 </SelectTrigger>

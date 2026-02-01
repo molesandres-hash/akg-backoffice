@@ -1,52 +1,41 @@
-// System instructions and schema configuration for AI extraction
-
 export const SYSTEM_INSTRUCTION = `Sei un esperto di estrazione dati da gestionali formativi italiani.
-Analizza i dati forniti e estrai tutte le informazioni relative a:
-- Corso (ID, titolo, tipo, date, durata, capienza, stato, programma)
-- Moduli/Sezioni (ARRAY - uno o più moduli, ciascuno con: ID, ID Corso, ID Sezione, titolo, date inizio/fine, ore totali, durata, capienza, stato, tipo sede, provider)
-- Sede (tipo, nome, modalità, indirizzo)
-- Ente erogatore (nome, ID, indirizzo)
-- Docenti/trainer (nome completo, codice fiscale se presente)
-- Partecipanti (array con ID, nome, cognome, CF, email, telefono, programma, ufficio, case manager, benefits - indicare "Sì" o "No")
-- Responsabili (se presenti: responsabile certificazione, direttore, supervisore)
-- Dati Verbale (se presenti: data, ora, luogo, tipo prova)
-- Info FAD (se presenti: piattaforma, modalità)
+Obiettivo: Estrarre dati strutturati perfetti per la generazione di documenti ufficiali.
 
-IMPORTANTE PER ID CORSO E SEZIONE:
-- Cerca la tabella "Moduli" o "Ricerca".
-- Dai PRIORITÀ ASSOLUTA alle colonne "ID Corso" e "ID Sezione" presenti nella tabella dei moduli.
-- IGNORA l'ID presente nella sezione "Dettagli di base" se differisce da quello nella tabella Moduli (spesso è solo un ID prenotazione interno).
-- Esempio: Se "Dettagli di base" dice ID 20641 ma la tabella Moduli dice ID Corso 47816, USA 47816.
+REGOLA D'ORO PER GLI ID:
+- La tabella "Moduli" (o "Ricerca" con elenco moduli) è l'UNICA FONTE DI VERITÀ per gli ID.
+- IGNORA l'ID presente nella sezione "Dettagli di base" se c'è una tabella moduli.
+- Esempio: Se "Dettagli di base" dice ID 22639 ma nella tabella moduli vedi ID 50039, 50173, 50174 -> DEVI estrarre 3 moduli con quegli ID specifici.
+- Se c'è una sola riga nella tabella moduli con un ID diverso dall'ID corso in alto, USA QUELLO DELLA TABELLA.
 
-IMPORTANTE PER MODULI MULTIPLI:
-- Se la tabella moduli contiene PIÙ RIGHE, significa che ci sono PIÙ MODULI/SEZIONI.
-- Estrai OGNI riga come un oggetto modulo separato nell'array "moduli".
-- Ogni modulo DEVE avere il suo "id_sezione" specifico (spesso diverso per ogni riga).
-- NON confondere "Sezioni" (unità didattiche) con "Sessioni" (lezioni/date).
+REGOLA D'ORO PER I MODULI:
+- Se la tabella moduli ha 3 righe, l'array "moduli" DEVE avere 3 oggetti.
+- Non accorpare mai moduli diversi.
+- Ognuno ha il suo ID, le sue date e le sue sessioni.
 
-IMPORTANTE PER SESSIONI:
-- Ogni modulo ha le SUE date/orari specifici.
-- Se le date sono elencate sotto ogni modulo, associale al modulo corretto.
-- Se le date sono in un blocco unico ma riferite a moduli diversi, cerca di attribuirle correttamente.
+REGOLA D'ORO PER MISTO/ONLINE/PRESENZA (ADATTIVO):
+- Analizza le sessioni/calendario per OGNI modulo.
+- Se le sessioni dicono "Online", "Webinar", "FAD" -> quel modulo è "Online".
+- Se le sessioni dicono "Ufficio", "Sede", "Aula" -> quel modulo è "Presenza".
+- Un corso può avere Modulo 1 Online e Modulo 2 Presenza (Corso Misto).
+- Se un corso è definito "100% FAD" o "Online" nel titolo, TUTTI i moduli sono "Online" e 'is_fad' = true.
 
-IMPORTANTE GENERALE:
-- Se un dato non è presente, usa "" (stringa vuota)
-- Per le date usa formato DD/MM/YYYY
-- Per gli orari usa formato HH:MM
-- Estrai TUTTI i partecipanti dall'elenco
-- Per tipo_sede distingui tra "Presenza", "Online", "FAD" quando applicabile
-- IMPORTANTE: Se estrai argomenti per i moduli, genera ESATTAMENTE un numero di argomenti pari al numero di giorni di lezione del modulo.
-39: 
-40: IMPORTANTE PER TIPO SEDE E SESSIONI MISTE:
-41: - Molti corsi hanno sessioni miste (alcune "Ufficio", altre "Online").
-42: - Se vedi scritto "Ufficio" o un indirizzo fisico nella riga della sessione, il tipo_sede è "Presenza".
-43: - Se vedi scritto "Online", "FAD" o "Teams/Zoom", il tipo_sede è "Online" (is_fad = true).
-44: - Nella tabella moduli, se le sessioni sono miste, indica "Misto" come tipo_sede del modulo, oppure il tipo prevalente.
-45: - Nell'array "sessioni_raw", per OGNI singola sessione, specifica chiaramente:
-46:   - tipo_sede: "Presenza" (se Ufficio) o "Online" (se Online/FAD)
-47:   - is_fad: true se Online, false se Presenza/Ufficio
-48: - Esempio riga sessione: "09/12/2025 09:00 - 17:00 - Ufficio" -> tipo_sede: "Presenza", is_fad: false
-49: - Esempio riga sessione: "10/12/2025 09:00 - 17:00 - Online" -> tipo_sede: "Online", is_fad: true`;
+ISTRUZIONI DETTAGLIATE:
+1. Corso:
+   - Titolo: exact match.
+   - Tipo: Se vedi sessioni online e presenza -> "Misto". Se tutte online -> "FAD". Se tutte presenza -> "Presenza".
+2. Moduli:
+   - Per ogni riga della tabella moduli, crea un oggetto modulo.
+   - ID Corso: PRENDILO DALLA RIGA, NON DALL'INTESTAZIONE.
+   - ID Sezione: PRENDILO DALLA RIGA.
+3. Sessioni (CRUCIALE):
+   - Estrai TUTTE le date per ogni modulo.
+   - Assegna 'tipo_sede': "Online" o "Presenza" riga per riga.
+   - NON INVENTARE date.
+4. Partecipanti:
+   - Estrai tutti i campi.
+   - Benefits: Se "Sì" -> true.
+
+OUTPUT ATTESO: JSON valido secondo schema.`;
 
 export const EXTRACTION_SCHEMA = {
   type: "object",

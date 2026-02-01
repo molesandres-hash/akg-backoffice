@@ -7,15 +7,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Star, Loader2, Award } from 'lucide-react';
-import { 
-  getAllResponsabiliCertificazione, 
-  addResponsabileCertificazione, 
-  updateResponsabileCertificazione, 
-  deleteResponsabileCertificazione, 
+import {
+  getAllResponsabiliCertificazione,
+  addResponsabileCertificazione,
+  updateResponsabileCertificazione,
+  deleteResponsabileCertificazione,
   setDefaultResponsabileCertificazione,
-  type DefaultResponsabileCertificazione 
+  type DefaultResponsabileCertificazione
 } from '@/db/templateDb';
 import { toast } from 'sonner';
+import { SignatureField } from '@/components/signatures/SignatureField';
 
 const emptyResponsabile: Omit<DefaultResponsabileCertificazione, 'id'> = {
   nome: '',
@@ -218,6 +219,13 @@ export function ResponsabiliCertificazioneManager() {
                     Imposta come predefinito
                   </Label>
                 </div>
+
+                {(formData.nome && formData.cognome) && (
+                  <SignatureField
+                    name={`${formData.nome} ${formData.cognome}`}
+                    type="responsabile"
+                  />
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>

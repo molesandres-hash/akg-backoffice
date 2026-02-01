@@ -13,13 +13,13 @@ import { getAllListeArgomenti, type ListaArgomenti } from '@/db/templateDb';
 import { toast } from 'sonner';
 
 export function ModuliForm() {
-  const { 
-    courseData, 
-    addModulo, 
-    updateModulo, 
+  const {
+    courseData,
+    addModulo,
+    updateModulo,
     removeModulo,
     updateSessione,
-    isSingleModule 
+    isSingleModule
   } = useWizardStore();
   const { moduli } = courseData;
 
@@ -39,7 +39,7 @@ export function ModuliForm() {
     if (!lista) return;
 
     const modulo = moduli[moduloIndex];
-    
+
     // Aggiorna gli argomenti del modulo
     updateModulo(moduloIndex, { argomenti: lista.argomenti });
 
@@ -56,7 +56,7 @@ export function ModuliForm() {
   // Ridistribuisci argomenti esistenti alle sessioni
   const handleRedistributeArgomenti = (moduloIndex: number) => {
     const modulo = moduli[moduloIndex];
-    
+
     if (modulo.argomenti.length === 0) {
       toast.error('Nessun argomento da distribuire');
       return;
@@ -102,7 +102,7 @@ export function ModuliForm() {
                     {modulo.sessioni.length} sessioni
                   </Badge>
                   {modulo.tipo_sede && (
-                    <Badge 
+                    <Badge
                       variant={modulo.tipo_sede.toLowerCase().includes('online') ? 'default' : 'secondary'}
                       className="text-xs"
                     >
@@ -126,10 +126,27 @@ export function ModuliForm() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label>ID Modulo</Label>
+                    <Input
+                      value={modulo.id}
+                      onChange={(e) => updateModulo(index, { id: e.target.value })}
+                      placeholder="Es: mod_1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>ID Corso</Label>
                     <Input
                       value={modulo.id_corso}
-                      onChange={(e) => updateModulo(index, { id_corso: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // Auto-sync ID Modulo if it's still the default "mod_..."
+                        const updates: any = { id_corso: val };
+                        if (modulo.id.startsWith('mod_') || modulo.id === '') {
+                          updates.id = val;
+                        }
+                        updateModulo(index, updates);
+                      }}
                       placeholder="Es: 50039"
                     />
                   </div>
@@ -204,9 +221,9 @@ export function ModuliForm() {
                           </Select>
                         )}
                         {modulo.argomenti.length > 0 && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="h-8 gap-1 text-xs"
                             onClick={() => handleRedistributeArgomenti(index)}
                           >
