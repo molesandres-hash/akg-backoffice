@@ -1,73 +1,81 @@
-# Welcome to your Lovable project
+# AKG Backoffice - Sistema di Generazione Documentale
 
-## Project info
+Sistema gestionale avanzato per la digitalizzazione e la generazione automatica della documentazione per corsi di formazione finanziata e autofinanziata. Sviluppato per ottimizzare il flusso di lavoro di AK Group.
 
-**URL**: https://lovable.dev/projects/b8f583f1-363f-47c8-b488-d197e6c709f8
+## 🚀 Funzionalità Principali
 
-## How can I edit this code?
+### 1. Wizard di Creazione Corso
+Un processo guidato passo-passo per l'inserimento e la gestione dei dati del corso:
+- **Input Dati**: Caricamento dati manuale o tramite estrazione automatica.
+- **Validazione**: Controllo dei campi obbligatori e della coerenza dei dati.
+- **Generazione**: Creazione automatica dei pacchetti documentali.
 
-There are several ways of editing your application.
+### 2. Estrazione Dati Intelligente
+Il sistema offre due modalità di estrazione dati da documenti esistenti (PDF/Testo):
+- **AI Extraction (Gemini)**: Utilizza l'intelligenza artificiale di Google Gemini per analizzare testi non strutturati e interpretare formati complessi.
+- **Rule-Based Extraction**: (Sperimentale) Un motore basato su regole rigide per formati standardizzati, ideale per garantire coerenza su layout fissi.
 
-**Use Lovable**
+### 3. Generazione Documentale
+Il core del sistema supporta due approcci alla generazione dei file `.docx`:
+- **Template-Based**: Utilizza file Word preesistenti con placeholder (es. `{NOME_CORSO}`) che vengono sostituiti dinamicamente. Ideale per la massima flessibilità grafica.
+- **Programmatic Generation**: Generazione "da zero" tramite codice (libreria `docx`), utilizzata per documenti complessi che richiedono logica condizionale avanzata (es. *Modello A*, *Modello B*, *Registro Didattico*, *Convocazione*).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b8f583f1-363f-47c8-b488-d197e6c709f8) and start prompting.
+### 4. Gestione Firme e Timbri
+- **Firme Digitali**: Disegno su canvas o caricamento immagine per Docenti, Tutor, Supervisori e Partecipanti.
+- **Timbri Sede**: Gestione centralizzata dei timbri associati alle diverse sedi operative.
 
-Changes made via Lovable will be committed automatically to this repo.
+### 5. Architettura Local-First
+- **Database**: Utilizza `Dexie.js` (IndexedDBwrapper) per salvare tutti i dati direttamente nel browser dell'utente. Nessun dato lascia il dispositivo senza esplicita azione.
+- **Export/Import**: Funzionalità per esportare e importare i backup del database.
 
-**Use your preferred IDE**
+## 🛠️ Stack Tecnologico
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: TailwindCSS, Shadcn/ui (Radix Primitives)
+- **State Management**: Zustand, React Query
+- **Database**: Dexie.js (IndexedDB)
+- **Document Processing**:
+  - `docx`: Generazione programmatica
+  - `docxtemplater`: Manipolazione template
+  - `jszip`: Compressione pacchetti
+- **AI Integration**: Google Generative AI SDK (Gemini)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 📦 Installazione e Avvio
 
-Follow these steps:
+Assicurati di avere [Node.js](https://nodejs.org/) installato.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+# Installazione dipendenze
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Avvio server di sviluppo
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Il server sarà accessibile tipicamente a `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📂 Struttura Cartelle Principali
 
-**Use GitHub Codespaces**
+- `src/components`: Componenti UI riutilizzabili e parti del Wizard.
+- `src/services`: Logica di business centrale.
+    - `extraction`: Logica per AI e Rule-based extraction.
+    - `generation`: Motore di generazione documenti (`ProgrammaticDocxGenerator.ts` è il file chiave).
+- `src/db`: Configurazione del database locale Dexie.
+- `src/types`: Definizioni TypeScript condivise (es. `CourseData`).
+- `public/Templates_standard`: Repository dei file `.docx` usati come base per la generazione template-based.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## ⚠️ Known Issues e Limitazioni Attuali
 
-## What technologies are used for this project?
+- **Corsi Ibridi**: L'estrazione automatica per corsi misti (online + presenza) è complessa e talvolta richiede revisione manuale.
+- **Split Sessioni**: La logica di suddivisione delle sessioni (pausa pranzo) nella generazione programmatica è stata recentemente raffinata ma va monitorata su orari non standard.
+- **Validazione Pre-Generazione**: Il sistema permette a volte di procedere alla generazione anche con alcuni dati secondari mancanti, potendo causare placeholder vuoti nei documenti.
 
-This project is built with:
+## 🔮 Roadmap e Sviluppi Futuri
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Full Programmatic Transition**: Migrazione graduale di tutti i documenti dalla logica a template a quella programmatica per eliminare la dipendenza da file `.docx` esterni corrotti o malformati.
+2. **Backend Centralizzato**: Possibile evoluzione verso un backend cloud per la condivisione dei dati tra operatori diversi (attualmente limitata a export file).
+3. **Validazione Avanzata**: Implementazione di un sistema di "Health Check" del corso più rigoroso prima di abilitare il pulsante di generazione.
+4. **Dashboard Analitica**: Visualizzazione statistiche sui corsi gestiti e volumi di documenti generati.
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/b8f583f1-363f-47c8-b488-d197e6c709f8) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+*Documentazione aggiornata al 01/02/2026*
